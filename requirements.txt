@@ -1,0 +1,38 @@
+# requirements.txt
+# Quant Research Lab
+# Generated 2026-09-20
+
+# Core data science
+numpy>=1.24
+pandas>=2.0
+scipy>=1.10
+statsmodels>=0.14
+arch>=8.0
+scikit-learn>=1.3
+
+# Storage
+pyarrow>=14.0
+duckdb>=0.9
+redis>=5.0
+SQLAlchemy>=2.0
+alembic>=1.14
+
+# Config & logging
+PyYAML>=6.0
+python-json-logger>=3.0
+requests>=2.31
+
+# Testing & linting
+pytest>=7.4
+ruff>=0.16
+mypy>=1.8
+
+# Visualization
+matplotlib>=3.8
+seaborn>=0.13
+
+# MT5 (Windows-only)
+MetaTrader5>=5.0.0
+
+# Optional: for GPU monitoring if needed
+# pynvml>=11.0

@@ -1,0 +1,72 @@
+# Demo configuration - NEVER commit real secrets
+# Copy to config.yaml and fill in real values
+
+gpu:
+  max_temperature_c: 85
+  max_power_w: 200
+  mining_priority: false
+
+wallet:
+  address: ""  # Will be set later
+
+mining:
+  coin: ""
+  algorithm: ""
+  pool: ""
+  port: 0
+
+llm:
+  inference_priority: true
+
+# MT5 Configuration
+mt5:
+  terminal_path: ""  # Path to MT5 terminal
+  server: ""         # Broker server address
+  login: 0           # MT5 login number
+  # password and password are NEVER stored here
+  # Use environment variables or MT5 terminal login flow
+
+# Exchange configuration (API keys via environment variables)
+exchanges:
+  default_data_source: "ccxt"
+  rate_limit_ms: 1000
+
+# Database
+database:
+  engine: "duckdb"
+  path: "data/lab.duckdb"
+  parquet_cache: "data/historical/"
+
+# Redis
+redis:
+  host: "localhost"
+  port: 6379
+  db: 0
+
+# Risk defaults (Phase 5)
+risk:
+  max_position_size: 1.0
+  max_portfolio_exposure: 0.10
+  max_daily_loss: 0.05
+  max_drawdown: 0.20
+  max_spread_points: 50
+  max_slippage_bps: 10
+
+# Environment label (MUST be set per deployment)
+environment: "SIMULATED"  # Options: HISTORICAL_REAL | SIMULATED | BACKTEST | PAPER | MT5_DEMO | LIVE
+
+# Promotion gates (from AGENTS.md A5)
+promotion_gates:
+  min_oos_trades: 100
+  min_oos_windows: 4
+  oos_expectancy_after_costs: "> 0 with 95% bootstrap CI lower bound > 0"
+  psr_or_dsr_min: 0.95
+  pbo_max: 0.30
+  cost_stress_multiplier: 1.5
+  param_perturbation: "+/-20% keeps >= 70% of net performance"
+  regime_coverage: "no single regime contributes > 60% of total net PnL"
+  shadow_min_duration_days: 28
+  demo_min_duration_days: 56
+  demo_min_trades: 100
+  demo_vs_backtest_slippage_tolerance: 0.25
+  demo_max_drawdown_vs_backtest_expected: 1.5

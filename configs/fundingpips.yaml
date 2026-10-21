@@ -1,0 +1,108 @@
+# FundingPips Challenge Configuration
+# ============================================================
+# Select the challenge model, account size, and safety settings
+# for the prop firm compliance engine.
+#
+# Available profile_ids:
+#   fundingpips_2step_standard_5pct_p1  (EMPIRICAL)
+#   fundingpips_2step_standard_5pct_p2  (EMPIRICAL)
+#   fundingpips_2step_standard_3pct_p1  (EMPIRICAL)
+#   fundingpips_2step_standard_3pct_p2  (EMPIRICAL)
+#   fundingpips_2step_pro_p1            (EMPIRICAL)
+#   fundingpips_2step_pro_p2            (EMPIRICAL)
+#   fundingpips_1step_flex_p1           (UNVERIFIED — blocked from execution)
+#
+# IMPORTANT: Verify all rules against https://fundingpips.com
+# before running on a real challenge account.
+# ============================================================
+
+prop_firm:
+  # Active challenge profile
+  profile_id: "fundingpips_2step_standard_5pct_p1"
+
+  # Override initial balance (must match your actual challenge account balance)
+  # If not set, the profile default is used.
+  # initial_balance_override: 10000.0
+
+  # Safety buffer: inner cushion applied inside hard rule limits.
+  # Prevents trades that would place equity right at the hard limit.
+  # 0.005 = 0.5% of initial_balance (e.g. $50 on a $10,000 account).
+  safety_buffer_pct: 0.005
+
+  # Path to persisted compliance state file.
+  # Must survive process restarts. Change per challenge run.
+  state_file: "data/compliance_state.json"
+
+  # Warn the user when this fraction of a limit is consumed.
+  warn_threshold_pct: 0.70  # 70% of limit triggers WARNING state
+
+# ---------------------------------------------------------------------------
+# Execution research parameters
+# ---------------------------------------------------------------------------
+# Which risk configurations to sweep when running:
+#   python mt5_quant_algo.py backtest --firm fundingpips
+# ---------------------------------------------------------------------------
+research:
+  # Risk fractions to test (fraction of account equity per trade)
+  risk_levels:
+    - 0.0025   # 0.25%
+    - 0.005    # 0.50%
+    - 0.0075   # 0.75%
+    - 0.01     # 1.00%
+
+  # Donchian channel period
+  donchian_period: 50
+
+  # ATR period
+  atr_period: 14
+
+  # Minimum ATR value in USD to allow a trade
+  # Configurable research parameter — NOT an assumed universal optimum.
+  # The documented threshold from strategy research is $8.00.
+  min_atr_usd: 8.0
+
+  # Session filter (London session in UTC)
+  session_start_utc: "08:00"
+  session_end_utc:   "16:00"
+
+  # ATR stop-loss multiplier
+  atr_stop_multiplier: 1.5
+
+  # Take-profit multiplier (0 = no TP, exit by trailing or time)
+  atr_tp_multiplier: 3.0
+
+  # Maximum holding period in H1 bars before time-stop
+  max_holding_bars: 120
+
+  # Walk-forward configuration
+  walk_forward:
+    train_months: 12
+    test_months: 3
+    min_test_trades: 10
+
+# ---------------------------------------------------------------------------
+# Available FundingPips account sizes and models for reference
+# (NOT runtime config — for documentation purposes only)
+# ---------------------------------------------------------------------------
+# models_reference:
+#   2step_standard_5pct:
+#     account_sizes: [5000, 10000, 25000, 50000, 100000, 200000]
+#     phase_1_target: 8%
+#     phase_2_target: 5%
+#     daily_loss: 5%
+#     total_loss: 10%
+#     min_days: 3
+#   2step_standard_3pct:
+#     account_sizes: [5000, 10000, 25000, 50000, 100000, 200000]
+#     daily_loss: 3%
+#     total_loss: 10%
+#     min_days: 0
+#   2step_pro:
+#     account_sizes: [5000, 10000, 25000, 50000, 100000, 200000]
+#     phase_1_target: 6%
+#     phase_2_target: 6%
+#     daily_loss: 3%
+#     total_loss: 6%
+#     min_days: 2
+#   1step_flex:
+#     note: "UNVERIFIED — check official site"
