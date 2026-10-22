@@ -46,6 +46,11 @@ class StrategyResult:
 
 
 class BaseStrategy(ABC):
+    min_history: int = 50
+    max_hold: int = 20
+    stop_distance: float | None = None
+    target_distance: float | None = None
+
     @abstractmethod
     def generate_signal(self, data: pd.DataFrame) -> Signal:
         ...
@@ -65,6 +70,14 @@ class BaseStrategy(ABC):
     @abstractmethod
     def explain(self, signal: Signal) -> str:
         ...
+
+    def exit_plan(self, signal: Signal | None = None) -> dict[str, float | int | None]:
+        """Return strategy-owned exit parameters used by research runners."""
+        return {
+            "stop_distance": self.stop_distance,
+            "target_distance": self.target_distance,
+            "max_hold": self.max_hold,
+        }
 
     def run(self, data: pd.DataFrame) -> StrategyResult:
         signal = self.generate_signal(data)

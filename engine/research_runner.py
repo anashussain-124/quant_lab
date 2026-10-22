@@ -183,7 +183,9 @@ class ResearchRunner:
         self, data: pd.DataFrame, strategy: BaseStrategy, cost_model: CostModel
     ) -> np.ndarray:
         """Run backtest with proper position tracking."""
-        if len(data) < 50:
+        min_history = max(1, int(getattr(strategy, "min_history", 50)))
+        max_hold = max(1, int(getattr(strategy, "max_hold", 20)))
+        if len(data) < min_history:
             return np.array([])
 
         returns = []
@@ -191,7 +193,7 @@ class ResearchRunner:
         entry_price = 0.0
         entry_bar = 0
 
-        for i in range(50, len(data)):
+        for i in range(min_history - 1, len(data)):
             window = data.iloc[:i+1]
             signal = strategy.generate_signal(window)
 
@@ -223,7 +225,7 @@ class ResearchRunner:
                     entry_bar = i
 
             # Exit logic: close after N bars
-            if position != 0 and i - entry_bar > 20:
+            if position != 0 and i - entry_bar > max_hold:
                 if position == 1:
                     ret = (price - entry_price) / entry_price
                 else:
@@ -249,7 +251,9 @@ class ResearchRunner:
         price that was only known after the signal bar closed.
         """
         required = {"open", "close", "high", "low"}
-        if len(data) < 50 or not required.issubset(data.columns):
+        min_history = max(1, int(getattr(strategy, "min_history", 50)))
+        max_hold = max(1, int(getattr(strategy, "max_hold", 20)))
+        if len(data) < min_history or not required.issubset(data.columns):
             return np.array([])
         frame = data.reset_index(drop=True)
         returns: list[float] = []
@@ -275,7 +279,7 @@ class ResearchRunner:
             position = 0
             entry_price = 0.0
 
-        for i in range(50, len(frame) - 1):
+        for i in range(min_history - 1, len(frame) - 1):
             signal = strategy.generate_signal(frame.iloc[: i + 1])
             next_open = float(frame.iloc[i + 1]["open"])
             side = 1 if signal.side == "BUY" else -1
@@ -289,7 +293,7 @@ class ResearchRunner:
                     position = side
                     entry_price = execution_price(next_open, position)
                     entry_bar = i + 1
-            if position and i + 1 - entry_bar >= 20:
+            if position and i + 1 - entry_bar >= max_hold:
                 close_position(next_open, side)
 
         if position:

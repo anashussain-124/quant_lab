@@ -35,6 +35,7 @@ class MomentumBreakout(BaseStrategy):
         self.lookback = lookback
         self.exit_lookback = exit_lookback
         self.trend_period = trend_period
+        self.min_history = max(lookback + 1, exit_lookback + 1, trend_period)
 
     def generate_signal(self, data: pd.DataFrame) -> Signal:
         if len(data) < self.trend_period:
@@ -105,6 +106,7 @@ class MeanReversionZScore(BaseStrategy):
         self.lookback = lookback
         self.z_entry = z_entry
         self.z_exit = z_exit
+        self.min_history = lookback
 
     def generate_signal(self, data: pd.DataFrame) -> Signal:
         if len(data) < self.lookback:
@@ -171,6 +173,7 @@ class FundingContrarianDirectional(BaseStrategy):
         if lookback < 1:
             raise ValueError("lookback must be >= 1")
         self.lookback = lookback
+        self.min_history = lookback
 
     def generate_signal(self, data: pd.DataFrame) -> Signal:
         # Check if funding rate data is available

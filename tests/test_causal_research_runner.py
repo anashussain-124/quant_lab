@@ -6,14 +6,16 @@ import pytest
 
 from engine.backtester_v2 import CostModel
 from engine.research_runner import ExperimentConfig, ResearchRunner
+from strategies import BaseStrategy, Signal, SignalAction
 from strategies.real_strategies import MomentumBreakout
 from strategies.real_strategies import FundingContrarianDirectional
 
 
 def _bars(n: int = 90) -> pd.DataFrame:
     close = np.full(n, 100.0)
-    close[55:65] = np.linspace(100.0, 120.0, 10)
-    close[65:] = 120.0
+    if n >= 65:
+        close[55:65] = np.linspace(100.0, 120.0, 10)
+        close[65:] = 120.0
     return pd.DataFrame(
         {
             "timestamp": pd.date_range("2025-01-01", periods=n, freq="h", tz="UTC"),
@@ -98,3 +100,31 @@ def test_unknown_execution_mode_fails_closed() -> None:
     )
     with pytest.raises(ValueError, match="execution_mode"):
         runner.run_experiment(config)
+
+
+class _AlwaysLong(BaseStrategy):
+    min_history = 3
+    max_hold = 2
+
+    def generate_signal(self, data):
+        return Signal(action=SignalAction.TAKE, symbol="XAUUSD", side="BUY")
+
+    def estimate_edge(self, signal):
+        return 0.01
+
+    def estimate_risk(self, signal):
+        return 0.01
+
+    def confidence(self, signal):
+        return 0.5
+
+    def explain(self, signal):
+        return "test"
+
+
+def test_causal_runner_uses_strategy_warmup_and_max_hold() -> None:
+    data = _bars(12)
+    returns = ResearchRunner(data)._run_causal_backtest_on_data(
+        data, _AlwaysLong(), CostModel(taker_fee=0.0, expected_slippage_bps=0.0)
+    )
+    assert len(returns) >= 3
