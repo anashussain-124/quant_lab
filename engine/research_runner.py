@@ -26,6 +26,8 @@ from libs.quant_math import (
 )
 from strategies import BaseStrategy, SignalAction, get_strategy
 
+EXECUTION_MODES = frozenset({"legacy_same_close", "causal_next_open"})
+
 
 @dataclass
 class ExperimentConfig:
@@ -296,6 +298,11 @@ class ResearchRunner:
 
     def run_experiment(self, config: ExperimentConfig) -> ExperimentResult:
         """Run a complete research experiment."""
+        if config.execution_mode not in EXECUTION_MODES:
+            raise ValueError(
+                f"execution_mode must be one of {sorted(EXECUTION_MODES)}, "
+                f"got {config.execution_mode!r}"
+            )
         result = ExperimentResult(config=config)
 
         try:

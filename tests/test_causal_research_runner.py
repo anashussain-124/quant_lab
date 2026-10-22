@@ -2,9 +2,10 @@
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from engine.backtester_v2 import CostModel
-from engine.research_runner import ResearchRunner
+from engine.research_runner import ExperimentConfig, ResearchRunner
 from strategies.real_strategies import MomentumBreakout
 from strategies.real_strategies import FundingContrarianDirectional
 
@@ -77,3 +78,23 @@ def test_funding_no_trade_signal_cannot_become_take_via_edge(monkeypatch) -> Non
 def test_funding_strategy_is_explicitly_not_delta_neutral_carry() -> None:
     strategy = FundingContrarianDirectional()
     assert "delta-neutral" in strategy.__doc__
+
+
+def test_unknown_execution_mode_fails_closed() -> None:
+    runner = ResearchRunner(_bars())
+    config = ExperimentConfig(
+        experiment_id="invalid-mode",
+        hypothesis="invalid mode must fail",
+        strategy_name="momentum_breakout_real",
+        symbol="XAUUSD",
+        timeframe="H1",
+        train_start="2025-01-01T00:00:00+00:00",
+        train_end="2025-01-03T00:00:00+00:00",
+        val_start="2025-01-03T00:00:00+00:00",
+        val_end="2025-01-04T00:00:00+00:00",
+        test_start="2025-01-04T00:00:00+00:00",
+        test_end="2025-01-05T00:00:00+00:00",
+        execution_mode="unknown",
+    )
+    with pytest.raises(ValueError, match="execution_mode"):
+        runner.run_experiment(config)
