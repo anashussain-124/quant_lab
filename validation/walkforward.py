@@ -22,7 +22,7 @@ class FoldResult:
 def purged_walk_forward(values: np.ndarray, params: dict[str, float], *, folds: int = 6,
                         embargo: int = 1) -> list[FoldResult]:
     """Evaluate fixed params on sequential test folds with an embargo gap."""
-    if folds < 2 or embargo < 0 or len(values) < folds:
+    if folds < 2 or embargo < 0:
         raise ValueError("invalid folds, embargo, or sample size")
     chunks = np.array_split(np.asarray(values, dtype=float), folds)
     results: list[FoldResult] = []
@@ -30,9 +30,10 @@ def purged_walk_forward(values: np.ndarray, params: dict[str, float], *, folds: 
     for fold, chunk in enumerate(chunks):
         test_start = start + (embargo if fold > 0 else 0)
         test = np.asarray(values[test_start:start + len(chunk)], dtype=float)
+        mean_r = float(test.mean()) if len(test) else 0.0
         gains = float(test[test > 0].sum())
         losses = float(-test[test < 0].sum())
-        results.append(FoldResult(fold, test_start, start + len(chunk), float(test.mean()),
+        results.append(FoldResult(fold, test_start, start + len(chunk), mean_r,
                                   gains / losses if losses else float("inf"), len(test), dict(params)))
         start += len(chunk)
     return results

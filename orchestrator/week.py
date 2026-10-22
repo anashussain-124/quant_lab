@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from configs.v4 import WeekRunConfig, stop_requested
+from orchestrator.pipeline import run_dry_run
 
 
 @dataclass(frozen=True)
@@ -38,3 +39,9 @@ class WeekOrchestrator:
                 encoding="utf-8",
             )
         return checkpoints
+
+    def run_dry_run(self, input_path: Path, trials: int = 200) -> dict[str, object]:
+        """Run the complete real-data pipeline without reading the holdout."""
+        if stop_requested(self.config.safety):
+            raise RuntimeError("STOP requested before dry run")
+        return run_dry_run(input_path, trials=trials, output_dir=self.checkpoint_dir.parent)

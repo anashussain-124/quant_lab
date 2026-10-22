@@ -30,7 +30,8 @@ def test_stop_is_first_when_stop_and_target_are_both_touched():
         {"open": 100, "high": 101, "low": 99, "close": 100},
         {"open": 100, "high": 102, "low": 98, "close": 100},
     ])
-    trade = simulate_next_open(bars, {0: 1}, stop_distance=Decimal("1"), target_distance=Decimal("1"))[0]
+    trade = simulate_next_open(bars, {0: 1}, stop_distance=Decimal("1"), target_distance=Decimal("1"),
+                               costs=CostConfig(Decimal("0"), Decimal("0"), Decimal("0")))[0]
     assert trade.exit_reason == "stop"
     assert trade.exit_price == Decimal("99")
 

@@ -13,7 +13,7 @@ import pandas as pd
 from execution.causal_sim import CostConfig, SimTrade, simulate_next_open
 from hypotheses.generators import GENERATORS, SignalPlan
 from hypotheses.registry import hypothesis_registry
-from search.registry import ExperimentRegistry
+from search.registry import ExperimentRegistry, code_hash
 from validation.core import shifted_signal_percentile
 from validation.gates import GateResult, evaluate_candidate
 from validation.walkforward import deflated_sharpe, purged_walk_forward
@@ -64,6 +64,11 @@ def run_search(frame: pd.DataFrame, *, trials: int = 200, seed: int = 7,
         raise ValueError("trials must be positive")
     rng = np.random.default_rng(seed)
     registry = ExperimentRegistry(registry_path)
+    input_hash = __import__("hashlib").sha256(
+        __import__("pandas").util.hash_pandas_object(frame, index=True).values.tobytes()
+    ).hexdigest()
+    source_root = Path(__file__).resolve().parents[1]
+    source_hash = code_hash(source_root)
     specs = hypothesis_registry()
     outcomes: list[TrialOutcome] = []
     for trial in range(trials):
@@ -113,8 +118,8 @@ def run_search(frame: pd.DataFrame, *, trials: int = 200, seed: int = 7,
                               float(stressed.mean()) if len(stressed) else float("nan"),
                               float(stressed_2.mean()) if len(stressed_2) else float("nan"))
         outcomes.append(result)
-        registry.record(strategy=spec.name, params=params, data_hash="runtime-input",
-                        code_hash_value="runtime-code", results={"verdict": gate.verdict, "n": len(values),
+        registry.record(strategy=spec.name, params=params, data_hash=input_hash,
+                        code_hash_value=source_hash, results={"verdict": gate.verdict, "n": len(values),
                                                                   "mean_net_r": result.mean_net_r}, seed=seed + trial)
     return outcomes
 

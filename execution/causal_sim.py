@@ -18,8 +18,10 @@ Side = Literal[1, -1]
 
 @dataclass(frozen=True)
 class CostConfig:
-    spread_bps: Decimal = Decimal("0")
-    slippage_bps: Decimal = Decimal("0")
+    # A zero-cost model must be explicit in a unit test; production defaults
+    # are nonzero so v4 cannot silently run with a constant-zero spread.
+    spread_bps: Decimal = Decimal("1")
+    slippage_bps: Decimal = Decimal("0.5")
     commission_bps: Decimal = Decimal("0")
 
 
