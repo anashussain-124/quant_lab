@@ -16,6 +16,7 @@ Model conventions
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 from dataclasses import dataclass, replace
@@ -25,6 +26,48 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
+
+
+def _code_version() -> str:
+    """Return the repository commit when available, without invoking Git."""
+    git_dir = Path(__file__).resolve().parents[2] / ".git"
+    head = git_dir / "HEAD"
+    if not head.exists():
+        return "unknown"
+    value = head.read_text(encoding="utf-8").strip()
+    if value.startswith("ref: "):
+        ref = git_dir / value[5:]
+        return ref.read_text(encoding="utf-8").strip() if ref.exists() else value
+    return value
+
+
+def _stable_hash(value: object) -> str:
+    payload = json.dumps(value, sort_keys=True, default=str, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _data_quality(df: pd.DataFrame) -> dict[str, object]:
+    """Summarize checks that can be proven from the normalized input frame."""
+    required = ["open", "high", "low", "close"]
+    invalid_ohlc = int(((df["high"] < df["low"]) |
+                        (df[required] <= 0).any(axis=1) |
+                        (df["open"] > df["high"]) |
+                        (df["open"] < df["low"]) |
+                        (df["close"] > df["high"]) |
+                        (df["close"] < df["low"])).sum())
+    deltas = df.index.to_series().diff().dropna()
+    expected = pd.Timedelta(minutes=5)
+    return {
+        "score": 1.0 if len(df) and invalid_ohlc == 0 else 0.0,
+        "score_scope": "structural OHLC/timezone checks; market-closure gaps reported separately",
+        "bars": int(len(df)),
+        "timezone": str(df.index.tz),
+        "monotonic_increasing": bool(df.index.is_monotonic_increasing),
+        "duplicate_timestamps": int(df.index.duplicated().sum()),
+        "missing_ohlc_cells": int(df[required].isna().sum().sum()),
+        "invalid_ohlc_rows": invalid_ohlc,
+        "gaps_over_5_minutes": int((deltas > expected).sum()),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -147,6 +190,20 @@ def load_csv(path: str | Path, timestamp_mode: str = "utc", server_utc_offset: f
     cols = [c for c in ["open", "high", "low", "close", "spread"] if c in raw.columns]
     frame = _normalize_frame(raw[cols])
     frame.attrs["source"] = f"csv:{path}"
+    return frame
+
+
+def load_parquet(path: str | Path) -> pd.DataFrame:
+    """Load a previously captured UTC OHLC snapshot for reproducible reruns."""
+    raw = pd.read_parquet(path)
+    raw.columns = [str(c).strip().strip("<>").lower() for c in raw.columns]
+    timestamp_column = next((c for c in ("timestamp", "time", "datetime") if c in raw.columns), None)
+    if timestamp_column is None:
+        raise ValueError("Parquet needs a timestamp, time or datetime column.")
+    raw.index = pd.DatetimeIndex(pd.to_datetime(raw.pop(timestamp_column), errors="raise", utc=True))
+    cols = [c for c in ["open", "high", "low", "close", "spread"] if c in raw.columns]
+    frame = _normalize_frame(raw[cols])
+    frame.attrs["source"] = f"parquet:{path}"
     return frame
 
 
@@ -836,7 +893,9 @@ class Backtester:
 def trade_metrics(res: BacktestResult) -> dict:
     t = res.trades
     if t.empty:
-        return {"trades": 0, "net_return_%": round(res.return_pct, 2),
+        return {"trades": 0, "gross_profit_$": 0.0, "gross_loss_$": 0.0,
+                "net_pnl_$": round(float(t.pnl.sum()) if "pnl" in t else 0.0, 2),
+                "net_return_%": round(res.return_pct, 2),
                 "max_drawdown_%": round(res.max_drawdown_pct, 2),
                 "worst_daily_loss_%": round(res.worst_daily_loss_pct, 2)}
     wins = float(t.loc[t.pnl > 0, "pnl"].sum())
@@ -846,6 +905,8 @@ def trade_metrics(res: BacktestResult) -> dict:
     sharpe = (daily_ret.mean() / daily_ret.std() * math.sqrt(252)) if len(daily_ret) > 2 and daily_ret.std() > 0 else np.nan
     return {
         "trades": int(len(t)), "win_rate_%": round(float((t.pnl > 0).mean() * 100), 1),
+        "gross_profit_$": round(wins, 2), "gross_loss_$": round(losses, 2),
+        "net_pnl_$": round(float(t.pnl.sum()), 2),
         "profit_factor": round(wins / losses, 3) if losses else (float("inf") if wins else np.nan),
         "avg_R": round(float(t.r.mean()), 3), "expectancy_$": round(float(t.pnl.mean()), 2),
         "net_return_%": round(float(res.return_pct), 2), "max_drawdown_%": round(float(res.max_drawdown_pct), 2),
@@ -1011,9 +1072,26 @@ def print_strategy_report(df: pd.DataFrame, inst: Instrument, costs: Costs, risk
     research.equity.rename("equity").to_csv(equity_path, index_label="time")
     print(f"Trade log saved: {trades_path}")
     print(f"Equity curve saved: {equity_path}")
-    report_data = {"strategy": strategy.name, "source": str(df.attrs.get("source", "in-memory")),
+    code_version = _code_version()
+    data_hash = _stable_hash({
+        "index": [str(value) for value in df.index],
+        "columns": {column: df[column].tolist() for column in df.columns},
+    })
+    config = {"instrument": inst.__dict__, "costs": costs.__dict__,
+              "risk": risk.__dict__, "rules_p1": rules_p1.__dict__,
+              "rules_p2": rules_p2.__dict__}
+    config_hash = _stable_hash(config)
+    experiment_id = _stable_hash({"data_hash": data_hash, "code_version": code_version,
+                                  "config_hash": config_hash, "strategy": strategy.name})[:16]
+    report_data = {"experiment_id": experiment_id,
+                   "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+                   "environment": "BACKTEST", "code_version": code_version,
+                   "data_hash": data_hash, "config_hash": config_hash,
+                   "strategy": strategy.name, "source": str(df.attrs.get("source", "in-memory")),
                    "bars": len(df), "data_start_utc": str(df.index[0]), "data_end_utc": str(df.index[-1]),
-                   "instrument": inst.__dict__, "costs": costs.__dict__, "research_metrics": metrics,
+                   "instrument": inst.__dict__, "costs": costs.__dict__, "risk": risk.__dict__,
+                   "rules": {"phase_1": rules_p1.__dict__, "phase_2": rules_p2.__dict__},
+                   "data_quality": _data_quality(df), "research_metrics": metrics,
                    "news_blackout_csv": news_blackout_csv,
                    "news_signals_suppressed": suppressed_news_signals,
                    "research_outcome": research.outcome, "note": "Historical research only; metrics are not a verified challenge pass probability."}
@@ -1098,6 +1176,7 @@ def main() -> None:
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument("--mt5", metavar="SYMBOL", help="Fetch M5 history from running MT5 terminal")
     source.add_argument("--csv", help="OHLC CSV file")
+    source.add_argument("--parquet", help="Previously captured UTC OHLC Parquet snapshot")
     source.add_argument("--synthetic", action="store_true", help="Synthetic data for plumbing tests only")
     parser.add_argument("--days", type=int, default=1095, help="History days for --mt5 (default 1095 = 3 years)")
     parser.add_argument("--csv-timezone", choices=("utc", "broker"), default="utc", help="Interpret naive CSV timestamps as UTC or broker-server time")
@@ -1125,6 +1204,8 @@ def main() -> None:
     parser.add_argument("--daily-guard-pct", type=float, default=1.0, help="Internal daily equity guard percent")
     parser.add_argument("--total-guard-pct", type=float, default=4.0, help="Internal peak/start equity guard percent")
     parser.add_argument("--outdir", default=".", help="Directory for reports")
+    parser.add_argument("--save-input", action="store_true",
+                        help="Save the loaded input snapshot as input_m5.parquet for reproducible reruns")
     a = parser.parse_args()
 
     if a.synthetic:
@@ -1135,6 +1216,11 @@ def main() -> None:
         print(f"MT5 data: {a.mt5}; requested {a.days} days, received {len(df):,} M5 bars from {df.index[0]} to {df.index[-1]} UTC")
         if (df.index[-1] - df.index[0]).days < min(a.days - 14, int(a.days * 0.8)):
             print("WARNING: received history is materially shorter than requested. Check MT5 'Max bars in chart' and wait for history download.")
+    elif a.parquet:
+        df = load_parquet(a.parquet)
+        inst = Instrument(point=a.point, contract_size=a.contract_size, volume_min=a.volume_min,
+                          volume_step=a.volume_step, volume_max=a.volume_max)
+        print(f"Parquet data: {len(df):,} bars from {df.index[0]} to {df.index[-1]} UTC")
     else:
         df = load_csv(a.csv, a.csv_timezone, a.server_utc_offset)
         inst = Instrument(point=a.point, contract_size=a.contract_size, volume_min=a.volume_min,
@@ -1146,6 +1232,11 @@ def main() -> None:
                       soft_total_drawdown_pct=a.total_guard_pct / 100.0)
     selected = list(STRATEGIES) if a.strategy == "all" else [a.strategy]
     outdir = Path(a.outdir); outdir.mkdir(parents=True, exist_ok=True)
+    if a.save_input:
+        snapshot = df.copy()
+        snapshot.insert(0, "timestamp", snapshot.index)
+        snapshot.to_parquet(outdir / "input_m5.parquet", index=False)
+        print(f"Input snapshot saved: {outdir / 'input_m5.parquet'}")
     if a.daily_loss_config == "3pct":
         rules_p1, rules_p2 = RULES["fundingpips_2step_p1_3pct_daily"], RULES["fundingpips_2step_p2_3pct_daily"]
     else:

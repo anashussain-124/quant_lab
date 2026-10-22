@@ -4,11 +4,21 @@ These are NOT placeholders — they implement actual logic.
 """
 from __future__ import annotations
 
-import pandas as pd
 import numpy as np
-from decimal import Decimal
+import pandas as pd
 
 from strategies import BaseStrategy, Signal, SignalAction
+
+
+def _symbol(data: pd.DataFrame) -> str:
+    """Return a scalar symbol without accidentally returning a whole column."""
+    value = data.attrs.get("symbol")
+    if isinstance(value, str) and value:
+        return value
+    if "symbol" in data.columns and not data.empty:
+        value = data["symbol"].iloc[-1]
+        return str(value) if pd.notna(value) else "UNKNOWN"
+    return "UNKNOWN"
 
 
 class MomentumBreakout(BaseStrategy):
@@ -20,13 +30,15 @@ class MomentumBreakout(BaseStrategy):
     """
 
     def __init__(self, lookback: int = 20, exit_lookback: int = 10, trend_period: int = 50):
+        if min(lookback, exit_lookback, trend_period) < 2:
+            raise ValueError("lookback, exit_lookback, and trend_period must be >= 2")
         self.lookback = lookback
         self.exit_lookback = exit_lookback
         self.trend_period = trend_period
 
     def generate_signal(self, data: pd.DataFrame) -> Signal:
         if len(data) < self.trend_period:
-            return Signal(action=SignalAction.NO_TRADE, symbol=data.get("symbol", "UNKNOWN"))
+            return Signal(action=SignalAction.NO_TRADE, symbol=_symbol(data))
 
         close = data["close"].values
         high = data["high"].values
@@ -37,13 +49,13 @@ class MomentumBreakout(BaseStrategy):
         lower = np.min(low[-self.exit_lookback-1:-1])
 
         # Trend filter
-        ema = pd.Series(close).ewm(span=self.trend_period).mean().values[-1]
+        ema = pd.Series(close).ewm(span=self.trend_period, adjust=False).mean().values[-1]
 
         # Signals
         if close[-1] > upper and close[-1] > ema:
             return Signal(
                 action=SignalAction.TAKE,
-                symbol=data.get("symbol", "UNKNOWN"),
+                symbol=_symbol(data),
                 side="BUY",
                 price=float(close[-1]),
                 confidence=min(0.8, (close[-1] - upper) / upper * 100 + 0.5),
@@ -52,7 +64,7 @@ class MomentumBreakout(BaseStrategy):
         elif close[-1] < lower and close[-1] < ema:
             return Signal(
                 action=SignalAction.TAKE,
-                symbol=data.get("symbol", "UNKNOWN"),
+                symbol=_symbol(data),
                 side="SELL",
                 price=float(close[-1]),
                 confidence=min(0.8, (lower - close[-1]) / lower * 100 + 0.5),
@@ -61,7 +73,7 @@ class MomentumBreakout(BaseStrategy):
 
         return Signal(
             action=SignalAction.NO_TRADE,
-            symbol=data.get("symbol", "UNKNOWN"),
+            symbol=_symbol(data),
             reason_codes=["no_breakout"],
         )
 
@@ -88,13 +100,15 @@ class MeanReversionZScore(BaseStrategy):
     """
 
     def __init__(self, lookback: int = 50, z_entry: float = 2.0, z_exit: float = 0.5):
+        if lookback < 2 or z_entry <= 0 or z_exit < 0:
+            raise ValueError("lookback must be >= 2 and z_entry must be positive")
         self.lookback = lookback
         self.z_entry = z_entry
         self.z_exit = z_exit
 
     def generate_signal(self, data: pd.DataFrame) -> Signal:
         if len(data) < self.lookback:
-            return Signal(action=SignalAction.NO_TRADE, symbol=data.get("symbol", "UNKNOWN"))
+            return Signal(action=SignalAction.NO_TRADE, symbol=_symbol(data))
 
         close = data["close"].values
         mean = np.mean(close[-self.lookback:])
@@ -108,7 +122,7 @@ class MeanReversionZScore(BaseStrategy):
         if z_score > self.z_entry:
             return Signal(
                 action=SignalAction.TAKE,
-                symbol=data.get("symbol", "UNKNOWN"),
+                symbol=_symbol(data),
                 side="SELL",
                 price=float(close[-1]),
                 confidence=min(0.8, abs(z_score) / 4.0),
@@ -117,7 +131,7 @@ class MeanReversionZScore(BaseStrategy):
         elif z_score < -self.z_entry:
             return Signal(
                 action=SignalAction.TAKE,
-                symbol=data.get("symbol", "UNKNOWN"),
+                symbol=_symbol(data),
                 side="BUY",
                 price=float(close[-1]),
                 confidence=min(0.8, abs(z_score) / 4.0),
@@ -126,7 +140,7 @@ class MeanReversionZScore(BaseStrategy):
 
         return Signal(
             action=SignalAction.NO_TRADE,
-            symbol=data.get("symbol", "UNKNOWN"),
+            symbol=_symbol(data),
             reason_codes=["zscore_neutral"],
         )
 
@@ -152,6 +166,8 @@ class FundingCarryReal(BaseStrategy):
     """
 
     def __init__(self, lookback: int = 8):
+        if lookback < 1:
+            raise ValueError("lookback must be >= 1")
         self.lookback = lookback
 
     def generate_signal(self, data: pd.DataFrame) -> Signal:
@@ -159,20 +175,20 @@ class FundingCarryReal(BaseStrategy):
         if "funding_rate" not in data.columns:
             return Signal(
                 action=SignalAction.NO_TRADE,
-                symbol=data.get("symbol", "UNKNOWN"),
+                symbol=_symbol(data),
                 reason_codes=["no_funding_data"],
             )
 
         funding = data["funding_rate"].values
         if len(funding) < self.lookback:
-            return Signal(action=SignalAction.NO_TRADE, symbol=data.get("symbol", "UNKNOWN"))
+            return Signal(action=SignalAction.NO_TRADE, symbol=_symbol(data))
 
         avg_funding = np.mean(funding[-self.lookback:])
 
         if avg_funding > 0.0001:
             return Signal(
                 action=SignalAction.TAKE,
-                symbol=data.get("symbol", "UNKNOWN"),
+                symbol=_symbol(data),
                 side="SELL",
                 confidence=min(0.7, avg_funding * 10000),
                 reason_codes=["positive_funding"],
@@ -180,7 +196,7 @@ class FundingCarryReal(BaseStrategy):
         elif avg_funding < -0.0001:
             return Signal(
                 action=SignalAction.TAKE,
-                symbol=data.get("symbol", "UNKNOWN"),
+                symbol=_symbol(data),
                 side="BUY",
                 confidence=min(0.7, abs(avg_funding) * 10000),
                 reason_codes=["negative_funding"],
@@ -188,7 +204,7 @@ class FundingCarryReal(BaseStrategy):
 
         return Signal(
             action=SignalAction.NO_TRADE,
-            symbol=data.get("symbol", "UNKNOWN"),
+            symbol=_symbol(data),
             reason_codes=["funding_neutral"],
         )
 

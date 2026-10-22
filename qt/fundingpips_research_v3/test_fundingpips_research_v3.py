@@ -7,8 +7,8 @@ import pytest
 from fundingpips_research_v3 import (
     AsianRangeBreakout, Backtester, Costs, DonchianBaseline, FailedBreakoutReversal,
     Instrument, PropRules, RiskConfig, TrendPullbackContinuation,
-    _normalize_frame, apply_news_blackout, load_csv, prepare, sequential_challenge,
-    synthetic_data, walk_forward_evaluation,
+    _code_version, _data_quality, _normalize_frame, apply_news_blackout, load_csv, load_parquet, prepare, sequential_challenge,
+    synthetic_data, trade_metrics, walk_forward_evaluation,
 )
 
 ZERO = Costs(commission_per_lot_side=0.0, slippage=0.0, fixed_spread_points=0.0)
@@ -67,6 +67,18 @@ def test_broker_time_csv_applies_only_explicit_offset(tmp_path):
     assert got.index[0] == pd.Timestamp("2024-01-02 00:00:00", tz="UTC")
 
 
+def test_parquet_snapshot_round_trip_is_utc_and_preserves_spread(tmp_path):
+    df = bars_frame([[2000, 2001, 1999, 2000] for _ in range(501)], spread=[20] * 501)
+    path = tmp_path / "snapshot.parquet"
+    snapshot = df.copy()
+    snapshot.insert(0, "timestamp", snapshot.index)
+    snapshot.to_parquet(path, index=False)
+    got = load_parquet(path)
+    assert got.index.equals(df.index)
+    assert got["spread"].equals(df["spread"])
+    assert got.attrs["source"].startswith("parquet:")
+
+
 def test_bad_ohlc_is_rejected():
     idx = pd.date_range("2024-01-01", periods=501, freq="5min", tz="UTC")
     df = pd.DataFrame({"open": 2000., "high": 1999., "low": 1998., "close": 1998.5}, index=idx)
@@ -82,6 +94,16 @@ def test_tp_accounting_exact():
     assert r.trades.iloc[0].volume == pytest.approx(1.0)
     assert r.trades.iloc[0].pnl == pytest.approx(1000.0)
     assert r.trades.iloc[0].reason == "TP"
+
+
+def test_trade_metrics_reports_gross_and_net_pnl():
+    df = bars_frame([[2000, 2001, 1999, 2000], [2000, 2011, 1999, 2010], [2010, 2010, 2009, 2010]])
+    sig = signal_frame(df, {0: {"side": 1, "stop_dist": 5.0, "target": 2010.0}})
+    metrics = trade_metrics(run_one(df, sig))
+    assert metrics["gross_profit_$"] == pytest.approx(1000.0)
+    assert metrics["gross_loss_$"] == pytest.approx(0.0)
+    assert metrics["net_pnl_$"] == pytest.approx(1000.0)
+    assert metrics["profit_factor"] == float("inf")
 
 
 def test_stop_wins_if_stop_and_target_touch_same_bar():
@@ -270,3 +292,13 @@ def test_walk_forward_evaluation_uses_chronological_test_windows():
     assert not wf.empty
     assert wf.test_start.is_monotonic_increasing
     assert (pd.to_datetime(wf.test_end) > pd.to_datetime(wf.test_start)).all()
+
+
+def test_data_quality_metadata_is_deterministic_and_timezone_aware():
+    df = synthetic_data(days=3, seed=31)
+    quality = _data_quality(df)
+    assert quality["score"] == pytest.approx(1.0)
+    assert quality["timezone"] == "UTC"
+    assert quality["invalid_ohlc_rows"] == 0
+    assert quality["duplicate_timestamps"] == 0
+    assert _code_version()

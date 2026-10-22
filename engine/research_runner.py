@@ -49,6 +49,7 @@ class ExperimentConfig:
         "spread_bps": 1.0,
     })
     parameters: dict[str, Any] = field(default_factory=dict)
+    execution_mode: str = "legacy_same_close"
 
 
 @dataclass
@@ -77,6 +78,7 @@ class ExperimentResult:
             "val_range": f"{self.config.val_start} to {self.config.val_end}",
             "test_range": f"{self.config.test_start} to {self.config.test_end}",
             "parameters": self.config.parameters,
+            "execution_mode": self.config.execution_mode,
             "train_metrics": self.train_metrics,
             "val_metrics": self.val_metrics,
             "test_metrics": self.test_metrics,
@@ -235,6 +237,63 @@ class ResearchRunner:
 
         return np.array(returns)
 
+    def _run_causal_backtest_on_data(
+        self, data: pd.DataFrame, strategy: BaseStrategy, cost_model: CostModel
+    ) -> np.ndarray:
+        """Run signals at bar close and fill at the next bar open.
+
+        This is deliberately separate from the historical same-close method so
+        old experiment results remain reproducible while new runs cannot use a
+        price that was only known after the signal bar closed.
+        """
+        required = {"open", "close", "high", "low"}
+        if len(data) < 50 or not required.issubset(data.columns):
+            return np.array([])
+        frame = data.reset_index(drop=True)
+        returns: list[float] = []
+        position = 0
+        entry_price = 0.0
+        entry_bar = 0
+
+        def execution_price(raw: float, side: int) -> float:
+            half_spread = cost_model.spread_bps / 20000
+            slip = cost_model.expected_slippage_bps / 10000
+            return raw * (1 + side * (half_spread + slip))
+
+        def close_position(raw: float, side: int) -> None:
+            nonlocal position, entry_price
+            exit_price = execution_price(raw, -position)
+            gross = (
+                (exit_price - entry_price) / entry_price
+                if position == 1
+                else (entry_price - exit_price) / entry_price
+            )
+            round_trip_cost = cost_model.taker_fee * 2
+            returns.append(gross - round_trip_cost)
+            position = 0
+            entry_price = 0.0
+
+        for i in range(50, len(frame) - 1):
+            signal = strategy.generate_signal(frame.iloc[: i + 1])
+            next_open = float(frame.iloc[i + 1]["open"])
+            side = 1 if signal.side == "BUY" else -1
+            if signal.action == SignalAction.TAKE:
+                if position == 0:
+                    position = side
+                    entry_price = execution_price(next_open, position)
+                    entry_bar = i + 1
+                elif side != position:
+                    close_position(next_open, side)
+                    position = side
+                    entry_price = execution_price(next_open, position)
+                    entry_bar = i + 1
+            if position and i + 1 - entry_bar >= 20:
+                close_position(next_open, side)
+
+        if position:
+            close_position(float(frame.iloc[-1]["close"]), side)
+        return np.array(returns)
+
     def run_experiment(self, config: ExperimentConfig) -> ExperimentResult:
         """Run a complete research experiment."""
         result = ExperimentResult(config=config)
@@ -256,9 +315,12 @@ class ResearchRunner:
                 return result
 
             # Run backtest on each split
-            train_returns = self._run_backtest_on_data(train, strategy, self.cost_model)
-            val_returns = self._run_backtest_on_data(val, strategy, self.cost_model)
-            test_returns = self._run_backtest_on_data(test, strategy, self.cost_model)
+            runner = (self._run_causal_backtest_on_data
+                      if config.execution_mode == "causal_next_open"
+                      else self._run_backtest_on_data)
+            train_returns = runner(train, strategy, self.cost_model)
+            val_returns = runner(val, strategy, self.cost_model)
+            test_returns = runner(test, strategy, self.cost_model)
 
             result.train_metrics = self._compute_metrics(train_returns)
             result.val_metrics = self._compute_metrics(val_returns)
@@ -290,7 +352,7 @@ class ResearchRunner:
                 taker_fee=self.cost_model.taker_fee * 2,
                 expected_slippage_bps=self.cost_model.expected_slippage_bps * 2,
             )
-            stressed_returns = self._run_backtest_on_data(test, strategy, stressed_cost)
+            stressed_returns = runner(test, strategy, stressed_cost)
             stressed_metrics = self._compute_metrics(stressed_returns)
             result.robustness = {
                 "cost_stress_pnl": stressed_metrics.get("total_pnl", 0),

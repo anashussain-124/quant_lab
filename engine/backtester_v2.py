@@ -123,6 +123,7 @@ class CostModel:
         maker_fee: float = 0.0002,  # 2 bps
         taker_fee: float = 0.0004,  # 4 bps
         expected_slippage_bps: float = 1.0,  # 1 bp expected slippage
+        spread_bps: float = 0.0,  # full quoted spread in basis points
         latency_cost_usd: float = 0.01,  # $0.01 per order
         funding_rate: float = 0.0001,  # Daily funding rate
         transfer_cost: float = 0.0,  # $0 for same-exchange
@@ -131,6 +132,7 @@ class CostModel:
         self.maker_fee = maker_fee
         self.taker_fee = taker_fee
         self.expected_slippage_bps = expected_slippage_bps
+        self.spread_bps = spread_bps
         self.latency_cost_usd = latency_cost_usd
         self.funding_rate = funding_rate
         self.transfer_cost = transfer_cost
