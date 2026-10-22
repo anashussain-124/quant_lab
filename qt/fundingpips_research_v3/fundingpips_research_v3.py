@@ -764,7 +764,7 @@ class Backtester:
                                     equity_values.append(bal); equity_times.append(p.index[i])
                                     break
                         if pos is not None and tp_hit:
-                            close_position(i, max(bid_o, tp), "TP")
+                            close_position(i, max(bid_o, tp) - costs.slippage, "TP")
                 else:
                     ask_h, ask_l, ask_o = bid_h + spr, bid_l + spr, bid_o + spr
                     stop_hit = ask_h >= sl
@@ -793,7 +793,7 @@ class Backtester:
                                     equity_values.append(bal); equity_times.append(p.index[i])
                                     break
                         if pos is not None and tp_hit:
-                            close_position(i, min(ask_o, tp), "TP")
+                            close_position(i, min(ask_o, tp) + costs.slippage, "TP")
 
             # Intrabar risk check on open positions not already stopped/targeted.
             if pos is not None:
