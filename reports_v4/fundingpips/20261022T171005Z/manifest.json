@@ -1,0 +1,93 @@
+{
+  "run_id": "20261022T171005Z",
+  "created_utc": "2026-10-22T17:10:06.052758+00:00",
+  "mode": "smoke",
+  "git_branch": "redesign/v4",
+  "git_revision": "342f65a5ecbf110ff4461d8eb1b46e2421b76c57",
+  "account_size_usd": 5000.0,
+  "risk_per_trade": 0.0025,
+  "profile_selection": "compare",
+  "official_sources": [
+    "https://help.fundingpips.com/hc/en-us/articles/34501809112081-2-Step-Standard",
+    "https://help.fundingpips.com/hc/en-us/articles/34502027344017-2-Step-Pro-Model",
+    "https://fundingpips.com/trading-objectives"
+  ],
+  "dataset": {
+    "path": "C:\\Users\\<USER>\\Desktop\\quant_lab\\data\\store\\v4\\mt5_XAUUSD_M5_a052314f19605be8.parquet",
+    "sha256": "a052314f19605be8497be9fd4df2168e7845c6c917bdc0be0aa5254164dd3952",
+    "rows_full": 267927,
+    "rows_pre_holdout": 227737,
+    "first_utc": "2023-01-03T01:00:00+00:00",
+    "last_utc": "2026-10-22T15:00:00+00:00",
+    "pre_holdout_last_utc": "2026-03-23T05:05:00+00:00",
+    "audit": {
+      "rows": 267927,
+      "duplicate_timestamps": 0,
+      "out_of_order": false,
+      "invalid_ohlc_rows": 0,
+      "missing_values": 0,
+      "gaps": 1027,
+      "timezone": "UTC",
+      "environment": "HISTORICAL_REAL"
+    },
+    "holdout_accessed": false
+  },
+  "preflight": {
+    "python": "3.13.15",
+    "executable": "C:\\Users\\<USER>\\Desktop\\quant_lab\\qt\\.venv\\Scripts\\python.exe",
+    "dependencies": {
+      "pandas": "3.0.6",
+      "numpy": "2.5.4",
+      "scipy": "1.18.1",
+      "pyarrow": "26.0.0"
+    },
+    "input": {
+      "path": "C:\\Users\\<USER>\\Desktop\\quant_lab\\data\\store\\v4\\mt5_XAUUSD_M5_a052314f19605be8.parquet",
+      "sha256": "a052314f19605be8497be9fd4df2168e7845c6c917bdc0be0aa5254164dd3952",
+      "rows_full": 267927,
+      "rows_pre_holdout": 227737,
+      "first_utc": "2023-01-03T01:00:00+00:00",
+      "last_utc": "2026-10-22T15:00:00+00:00",
+      "pre_holdout_last_utc": "2026-03-23T05:05:00+00:00",
+      "audit": {
+        "rows": 267927,
+        "duplicate_timestamps": 0,
+        "out_of_order": false,
+        "invalid_ohlc_rows": 0,
+        "missing_values": 0,
+        "gaps": 1027,
+        "timezone": "UTC",
+        "environment": "HISTORICAL_REAL"
+      },
+      "holdout_accessed": false
+    },
+    "output_root": "C:\\Users\\<USER>\\Desktop\\quant_lab\\reports_v4\\fundingpips",
+    "output_writable": true,
+    "profiles_loaded": [
+      "ftmo.yaml",
+      "funderpro.yaml",
+      "fundingpips.yaml",
+      "the5ers.yaml",
+      "topstep.yaml"
+    ],
+    "interfaces": {
+      "cost_decomposition": true,
+      "holdout_reader_not_called": true,
+      "five_templates": true
+    },
+    "training_rows_checked": 227737
+  },
+  "execution_assumptions": [
+    "next-bar-open causal fills",
+    "observed spread model",
+    "no contract sizing",
+    "no floating-equity reconstruction"
+  ],
+  "strategy_count": 5,
+  "trade_count": 3584,
+  "risk_certification": "INCOMPLETE",
+  "existing_cost_report_comparison": {
+    "status": "NOT_COMPARABLE_SMOKE",
+    "reason": "smoke intentionally uses the first 5,000 pre-holdout rows"
+  }
+}

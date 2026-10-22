@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 
 from data.holdout import ResearchDataAccessor
-from execution.causal_sim import CostConfig
+from execution.causal_sim import CostConfig, SimTrade
 from execution.fast_sim import simulate_next_open_fast
 from hypotheses.generators import GENERATORS
 from hypotheses.registry import hypothesis_registry
@@ -37,6 +37,15 @@ def _params(spec, registry_path: Path) -> tuple[dict[str, float], dict[str, floa
 
 
 def _metrics(frame: pd.DataFrame, spec, params: dict[str, float], label: str) -> dict[str, object]:
+    plan, trades = trades_for_template(frame, spec, params)
+    spread_price = float(frame["spread"].mean()) * 0.01 if "spread" in frame else 0.01
+    mid = float(frame["close"].mean())
+    spread_bps = max(0.01, spread_price / mid * 10000.0)
+    return metrics_for_trades(frame, spec, params, label, plan, trades, spread_bps, spread_price)
+
+
+def trades_for_template(frame: pd.DataFrame, spec, params: dict[str, float]):
+    """Return the causal signal plan and trades for one fixed template."""
     plan = GENERATORS[spec.name](frame, params)
     spread_price = float(frame["spread"].mean()) * 0.01 if "spread" in frame else 0.01
     mid = float(frame["close"].mean())
@@ -47,6 +56,12 @@ def _metrics(frame: pd.DataFrame, spec, params: dict[str, float], label: str) ->
         max_hold=plan.max_hold,
         costs=CostConfig(Decimal(str(spread_bps)), Decimal(str(spread_bps / 2)), Decimal("0")),
     )
+    return plan, trades
+
+
+def metrics_for_trades(frame: pd.DataFrame, spec, params: dict[str, float], label: str,
+                       plan, trades: list[SimTrade], spread_bps: float,
+                       spread_price: float) -> dict[str, object]:
     stop = float(plan.stop_distance)
     # SimTrade.gross_pnl is fill-to-fill and therefore already includes the
     # spread/slippage embedded in the fill prices. Reconstruct mid-to-mid

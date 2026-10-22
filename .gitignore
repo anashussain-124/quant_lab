@@ -5,6 +5,7 @@ __pycache__/
 
 # Virtual environments
 venv/
+.venv/
 env/
 
 # IDE
@@ -26,3 +27,10 @@ logs/*.log
 # Reports
 reports/
 *.json
+
+# Closeout artifacts: raw/generated data stays out of git, preserved in the archive
+data/store/
+reports_v4/**/trade_log.csv
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/

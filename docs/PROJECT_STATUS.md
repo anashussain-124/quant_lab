@@ -1,5 +1,7 @@
 # Project Status — 2026-10-22
 
+**Lifecycle: CLOSED for research on 2026-10-22 (tag `closeout-2026-10-22`).** See `docs/CLOSEOUT.md` for the final record and archive details.
+
 ## Verified
 
 - Branch: `redesign/v4`.

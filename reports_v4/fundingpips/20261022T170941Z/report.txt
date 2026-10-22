@@ -1,0 +1,31 @@
+FUNDINGPIPS XAUUSD INTEGRATED RUNNER
+mode=smoke
+run_dir=C:\Users\<USER>\Desktop\quant_lab\reports_v4\fundingpips\20261022T170941Z
+branch=redesign/v4
+revision=342f65a5ecbf110ff4461d8eb1b46e2421b76c57
+dataset=C:\Users\<USER>\Desktop\quant_lab\data\store\v4\mt5_XAUUSD_M5_a052314f19605be8.parquet
+period=2023-01-03T01:00:00+00:00 .. 2026-03-23T05:05:00+00:00
+pre_holdout_rows=227737
+final_holdout_accessed=False
+existing_cost_report_comparison=MISMATCH
+
+STRATEGY BASELINE
+opening_range_breakout: trades=843 gross_R=0.048795 cost_R=0.146006 net_R=-0.097211
+prior_day_sweep: trades=103 gross_R=-0.125552 cost_R=0.146957 net_R=-0.272509
+volatility_trend: trades=1416 gross_R=0.023485 cost_R=0.146016 net_R=-0.122532
+zscore_mean_reversion: trades=701 gross_R=-0.113812 cost_R=0.146132 net_R=-0.259943
+session_drift: trades=521 gross_R=-0.067102 cost_R=0.146027 net_R=-0.213129
+
+account_size_usd=5000.0
+risk_per_trade=0.0025 (RESEARCH ASSUMPTION ONLY)
+
+PROFILE RISK
+standard-5: target=400.00/250.00 daily_loss=250.00 max_loss=500.00 result=INCOMPLETE
+standard-3: target=400.00/250.00 daily_loss=150.00 max_loss=500.00 result=INCOMPLETE
+pro: target=300.00/300.00 daily_loss=150.00 max_loss=300.00 result=INCOMPLETE
+
+LIMITATIONS
+- Account-currency P&L is not certified.
+- Floating losses cannot be reconstructed from the current trade ledger.
+- No live or demo orders were submitted.
+- Results are historical BACKTEST/SIMULATED outputs only.
