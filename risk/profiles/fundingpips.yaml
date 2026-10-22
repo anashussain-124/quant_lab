@@ -1,0 +1,10 @@
+name: FundingPips 2-Step Standard Phase 1
+source_url: https://help.fundingpips.com/hc/en-us/articles/34501809112081-2-Step-Standard
+last_verified: '2026-10-21'
+status: VERIFIED
+values:
+  profit_target: {value: 0.08, tag: VERIFIED}
+  max_drawdown: {value: 0.10, tag: VERIFIED}
+  daily_loss_limit: {value: 0.05, tag: VERIFIED}
+  min_trading_days: {value: 3, tag: VERIFIED}
+  max_trades_per_day: {value: null, tag: ASSUMPTION}

@@ -71,3 +71,22 @@ class RuleEngine:
         else:
             self._stop = max(self._stop, proposed)
         return self._stop
+
+
+def daily_loss_basis(balance_at_open: float, equity_at_open: float, basis: str) -> float:
+    """Return the configured daily-loss reference; unknown modes fail closed."""
+    if basis == "equity":
+        return equity_at_open
+    if basis == "max_balance_equity":
+        return max(balance_at_open, equity_at_open)
+    raise ValueError(f"unknown daily-loss basis: {basis}")
+
+
+@dataclass
+class TrailingDrawdown:
+    limit: float
+    high_water_mark: float
+
+    def update(self, equity: float) -> bool:
+        self.high_water_mark = max(self.high_water_mark, equity)
+        return self.high_water_mark - equity >= self.limit

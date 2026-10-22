@@ -1,0 +1,10 @@
+name: FTMO
+source_url: https://ftmo.com/en/trading-objectives/
+last_verified: null
+status: ASSUMPTION
+values:
+  profit_target: {value: null, tag: ASSUMPTION}
+  max_drawdown: {value: null, tag: ASSUMPTION}
+  daily_loss_limit: {value: null, tag: ASSUMPTION}
+  min_trading_days: {value: null, tag: ASSUMPTION}
+  max_trades_per_day: {value: null, tag: ASSUMPTION}
