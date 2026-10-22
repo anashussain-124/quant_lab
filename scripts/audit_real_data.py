@@ -40,7 +40,8 @@ def main() -> int:
     parts.append("```text\n" + hour.to_string() + "\n```\n")
     rollover = spread.loc[spread["timestamp"].dt.hour.isin([21, 22, 23, 0, 1])]
     parts.append(f"Rollover-window mean spread points (UTC 21:00-01:59): {rollover['spread'].mean()}\n")
-    files = sorted(args.binance_dir.glob("*.parquet"))
+    files = sorted(args.binance_dir.glob("binance_*.parquet"))
+    files += sorted((args.binance_dir / "valid").glob("binance_*.parquet"))
     parts.append(f"## Binance Vision\n\nFiles: {len(files)}\n")
     for path in files[:4]:
         parts.append(_summary(path, pd.read_parquet(path)))

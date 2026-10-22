@@ -21,7 +21,11 @@ def collect_binance_month(symbol: str, year: int, month: int, out: Path) -> Path
     columns = ["open_time", "open", "high", "low", "close", "volume", "close_time",
                "quote_volume", "trades", "taker_buy_base", "taker_buy_quote", "ignore"]
     frame = pd.read_csv(io.BytesIO(archive.read(archive.namelist()[0])), header=None, names=columns)
-    frame["timestamp"] = pd.to_datetime(frame.pop("open_time"), unit="ms", utc=True)
+    raw_open_time = frame.pop("open_time")
+    # Binance Vision changed some archives from millisecond to microsecond
+    # epoch values. Detect the unit from magnitude and never silently shift it.
+    unit = "us" if int(raw_open_time.max()) >= 10**13 else "ms"
+    frame["timestamp"] = pd.to_datetime(raw_open_time, unit=unit, utc=True)
     frame = frame[["timestamp", "open", "high", "low", "close", "volume", "trades"]]
     payload = frame.to_parquet(index=False)
     import hashlib
