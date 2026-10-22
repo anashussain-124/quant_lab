@@ -1,0 +1,132 @@
+{
+  "mission": "fundingpips_5k_xauusd_2026-10-22",
+  "generated_utc": "2026-10-22T19:02:14+00:00",
+  "branch": "research/fundingpips-2026",
+  "environment_labels": ["HISTORICAL_REAL", "BACKTEST", "MT5_DEMO"],
+  "verdict": "OUTCOME_B_NO_VALIDATED_EDGE",
+  "candidate_id": null,
+  "demo_ready": false,
+  "deployment_status": "BLOCKED",
+  "real_money_trading_performed": false,
+  "live_code_path_exists": false,
+  "holdout_accessed": false,
+  "simulated_pass_not_actual_pass": true,
+  "rules": {
+    "profile_id": "fundingpips_2step_standard_5pct_p1",
+    "version": "2026-10-22",
+    "source_status": "EMPIRICAL",
+    "unresolved": [
+      "XAUUSD swap schedule on FundingPips",
+      "commission side basis for the stated $5/lot",
+      "daily reset DST offset (FAQ UTC+3 vs winter UTC+2)",
+      "FundingPips demo/evaluation credentials and server",
+      "personal-EA proof-of-ownership review"
+    ]
+  },
+  "research": {
+    "trials": 50,
+    "families": [
+      "donchian_trail",
+      "ema_pullback",
+      "asian_range_breakout",
+      "lowvol_meanrev",
+      "squeeze_breakout"
+    ],
+    "statistical_gates_passed": 0,
+    "failed_bootstrap_ci_gate": 50,
+    "failed_dsr_gate": 50,
+    "pbo": 0.55,
+    "holdout": "2023-01-01..2026-10-22 sealed",
+    "data_sha256": "5dbace90244b3b7e422890ef285b29f8e3f20591266ae2db641ce60bb82e267e",
+    "trade_log_sha256": "5384578e490df6f4ce4947e13fd07a722d4e71c825e489c1891495b138e2a270"
+  },
+  "challenge_simulation": {
+    "attempts": 165600,
+    "cells": 1800,
+    "configs": 50,
+    "rolling_starts_per_cell": 92,
+    "risk_fractions": [0.001, 0.0025, 0.005],
+    "primary_decision_case": {
+      "description": "5% daily, 3 minimum days, phase 2 resets to 5000, $10 round-turn commission, internal 1%/4% soft guards",
+      "results_by_risk": {
+        "0.001": {"passes": 0, "attempts": 4600, "pass_rate": 0.0, "firm_breaches": 0, "soft_guard_rate": 0.0, "inactivity_rate": 1.0},
+        "0.0025": {"passes": 0, "attempts": 4600, "pass_rate": 0.0, "firm_breaches": 0, "soft_guard_rate": 0.128478, "inactivity_rate": 0.579130},
+        "0.005": {"passes": 100, "attempts": 4600, "pass_rate": 0.021739, "firm_breaches": 0, "soft_guard_rate": 0.721087, "inactivity_rate": 0.135652, "median_days_to_pass": 675.833333, "p95_max_dd_pct": 0.082880}
+      }
+    },
+    "cost_sensitivity_at_0_005": {
+      "fp10_base": {"passes": 100, "pass_rate": 0.021739},
+      "fp10_stress1.5": {"passes": 42, "pass_rate": 0.009130},
+      "fp5_base": {"passes": 123, "pass_rate": 0.026739}
+    },
+    "firm_rules_only_at_0_005": {"passes": 303, "pass_rate": 0.065870, "firm_breaches": 74, "firm_breach_rate": 0.016087},
+    "configs_with_any_pass_at_0_005": 7,
+    "total_skipped_min_lot_at_0_005": 3003,
+    "report_path": "reports_fundingpips/challenge_2026-10-22/challenge_report.json",
+    "attempts_csv_path": "reports_fundingpips/challenge_2026-10-22/attempts.csv",
+    "attempts_csv_committed": false
+  },
+  "verification": {
+    "full_test_suite": {"passed": 481, "failed": 0, "warnings": 5},
+    "mission_tests": {"passed": 102, "breakdown": {"compliance": 36, "demo_runner": 46, "challenge_v5": 20}},
+    "ruff_mission_modules": "PASS",
+    "mypy_strict_core_modules": "PASS",
+    "live_mt5_check": {
+      "path": "reports_fundingpips/mt5_demo/check_2026-10-22T18-43Z.json",
+      "account": 114370849,
+      "server": "MetaQuotes-Demo",
+      "trade_mode": 0,
+      "account_is_demo": true,
+      "account_balance": 100000.0,
+      "expected_balance": 5000.0,
+      "execution_gate": "BLOCKED",
+      "order_check_performed": true,
+      "order_transmitted": false,
+      "order_check_retcode_name": "DONE",
+      "terminal_autotrading_enabled": false
+    }
+  },
+  "acceptance_summary": {
+    "rules_verified_and_versioned": "PASS",
+    "unresolved_critical_rules_fail_closed": "PASS",
+    "fundingpips_swap_commission_dst_credentials": "BLOCKED",
+    "data_audit_utc": "PASS",
+    "full_microstructure_realism": "FAIL_NOT_MODELLED",
+    "multiple_testing_controls": "PASS",
+    "holdout_sealed": "PASS",
+    "validated_after_cost_edge": "FAIL_NONE",
+    "prop_firm_risk_engine": "PASS",
+    "automatic_close_at_limit": "BLOCKED_READ_ONLY_MONITOR",
+    "challenge_simulation_accounting": "PASS",
+    "mt5_demo_safety_sizing_reconciliation_kill_switch": "PASS",
+    "actual_fundingpips_demo_order": "BLOCKED_NOT_EXECUTED",
+    "real_money_trading": "NOT_PERFORMED_PROHIBITED"
+  },
+  "deployment_blockers": [
+    "No FundingPips demo/evaluation credentials or server are available locally.",
+    "XAUUSD swap schedule on FundingPips is unverified.",
+    "Commission side basis ($5 per lot) is unstated by FundingPips.",
+    "Daily reset offset conflict: FAQ says UTC+3; Master auto-close table implies UTC+2 in winter.",
+    "Personal-EA proof-of-ownership review with FundingPips has not been performed.",
+    "All 50 v5 trials failed the frozen statistical gates; no candidate is demo-ready."
+  ],
+  "documents": [
+    "docs/fundingpips_mission_2026-10-22/initial_audit.md",
+    "docs/fundingpips_mission_2026-10-22/fundingpips_rules.md",
+    "docs/fundingpips_mission_2026-10-22/strategy_research.md",
+    "docs/fundingpips_mission_2026-10-22/backtest_methodology.md",
+    "docs/fundingpips_mission_2026-10-22/risk_management.md",
+    "docs/fundingpips_mission_2026-10-22/validation_report.md",
+    "docs/fundingpips_mission_2026-10-22/mt5_demo_guide.md",
+    "docs/fundingpips_mission_2026-10-22/final_research_report.md",
+    "docs/fundingpips_mission_2026-10-22/execution_checklist.md"
+  ],
+  "caveats": [
+    "A simulated pass is not a FundingPips pass.",
+    "Rolling attempts overlap and are not independent samples.",
+    "Fills and costs are the frozen v5 simulations, not FundingPips fills.",
+    "No MT5 order was transmitted; order_check validates plumbing only.",
+    "The 2023-2026 holdout was not accessed.",
+    "No strategy is guaranteed to pass a challenge or produce profits."
+  ]
+}

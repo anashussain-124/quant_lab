@@ -1,34 +1,35 @@
-"""Phase 6: MT5 XAUUSD Demo Trading.
+"""Legacy MT5 read-only bridge — NOT the sanctioned execution path.
+
+Demo order execution lives in ``execution/mt5_demo_runner.py``. This module
+attaches to a running terminal for research reads and refuses DEMO sends.
 
 Per AGENTS.md A2 & A6:
-- MT5 bridge verified: account 5056172579, MetaQuotes-Demo, $5000, 100:1
-- XAUUSD: contract size 100oz, tick 0.01, tick value $0.10
 - Demo/paper only — NO live trading
-- Must verify trade_mode == ACCOUNT_TRADE_MODE_DEMO before every order
-- Shadow mode: signals only
-- Demo mode: actual MT5 orders with real fills
+- Must verify trade_mode == ACCOUNT_TRADE_MODE_DEMO before any order
+- Shadow mode: simulated signals only
+- DEMO mode: refused here; use the safe runner
 """
 from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Any
 
 import numpy as np
 import pandas as pd
 
-from engine.risk_engine import RiskEngine, PaperBroker, Position, OrderSide, OrderStatus
-from engine.safety_gate import RiskContext, LabConfig
 from engine.logger import AuditLogger
+from engine.risk_engine import OrderSide, RiskEngine
+
 # MT5Adapter imported lazily to avoid import errors in tests
 
 
-class MT5OrderMode(str, Enum):
+class MT5OrderMode(StrEnum):
     """MT5 order execution modes."""
-    SHADOW = "SHADOW"  # Signals only, no MT5 orders
-    DEMO = "DEMO"  # Real MT5 demo orders
+    SHADOW = "SHADOW"  # Simulated signals only, no MT5 orders
+    DEMO = "DEMO"  # Refused by this bridge; use execution/mt5_demo_runner.py
     TEST = "TEST"  # Verification mode
 
 
@@ -64,18 +65,17 @@ class MT5Position:
     profit: float = 0.0
     swap: float = 0.0
     commission: float = 0.0
-    time_open: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    time_update: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    time_open: datetime = field(default_factory=lambda: datetime.now(UTC))
+    time_update: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 class MT5Bridge:
-    """MT5 bridge — verified demo-only trading.
+    """Legacy MT5 read-only bridge.
 
     Per AGENTS.md A2:
-    - MT5 verified working: account 5056172579, MetaQuotes-Demo
-    - Must verify trade_mode == ACCOUNT_TRADE_MODE_DEMO before every order
-    - Shadow mode: signals only, no actual orders
-    - Demo mode: real MT5 demo orders
+    - Must verify trade_mode == ACCOUNT_TRADE_MODE_DEMO before any order
+    - Shadow mode: simulated signals only
+    - DEMO mode: order sending is refused here
     - NO live trading
     """
 
@@ -89,46 +89,62 @@ class MT5Bridge:
         self.risk_engine = risk_engine or RiskEngine()
         self.audit = audit or AuditLogger()
         self.mode = MT5OrderMode.SHADOW
-        self._adapter = None  # type: ignore
+        self._mt5: Any = None
         self._positions: dict[int, MT5Position] = {}
         self._orders: list[dict[str, Any]] = []
         self._connected = False
         self._account_info: dict[str, Any] = {}
 
     def connect(self) -> bool:
-        """Connect to MT5 and verify DEMO mode.
+        """Attach to the running MT5 terminal and verify DEMO mode.
 
-        Per AGENTS.md A2: Must verify trade_mode == ACCOUNT_TRADE_MODE_DEMO.
+        This legacy bridge is read-only for research. It never transmits an
+        order; demo execution lives in ``execution/mt5_demo_runner.py``.
         """
         try:
-            self._adapter = MetaTrader5Adapter()
-            self._connected = self._adapter.initialize(
-                account=self.config.account,
-                server=self.config.server,
-            )
+            import MetaTrader5 as mt5
 
-            if self._connected:
-                self._account_info = self._adapter.account_info()
-                trade_mode = self._account_info.get("trade_mode", "")
+            if not mt5.initialize(path=self.config.path or None):
+                raise RuntimeError(f"initialize failed: {mt5.last_error()}")
+            info = mt5.account_info()
+            if info is None:
+                raise RuntimeError("account_info() returned None")
 
-                # CRITICAL: Verify DEMO mode
-                if trade_mode != "ACCOUNT_TRADE_MODE_DEMO":
-                    self._connected = False
-                    self.audit.log(
-                        event="MT5_REJECTED",
-                        action=f"Non-DEMO account: {trade_mode}",
-                        details={"trade_mode": trade_mode},
-                        actor="mt5_bridge",
-                    )
-                    return False
-
+            trade_mode = int(info.trade_mode)
+            if trade_mode != 0:  # ACCOUNT_TRADE_MODE_DEMO
+                mt5.shutdown()
+                self._connected = False
                 self.audit.log(
-                    event="MT5_CONNECTED",
-                    action="Connected to MT5 demo",
-                    details={"account": self.config.account, "server": self.config.server},
+                    event="MT5_REJECTED",
+                    action=f"Non-DEMO account: trade_mode={trade_mode}",
+                    details={"trade_mode": trade_mode},
                     actor="mt5_bridge",
                 )
+                return False
+            if int(info.login) != self.config.account or info.server != self.config.server:
+                mt5.shutdown()
+                self._connected = False
+                self.audit.log(
+                    event="MT5_REJECTED",
+                    action="Connected account does not match configuration",
+                    details={
+                        "expected_account": self.config.account,
+                        "actual_account": int(info.login),
+                        "expected_server": self.config.server,
+                        "actual_server": info.server,
+                    },
+                    actor="mt5_bridge",
+                )
+                return False
 
+            self._mt5 = mt5
+            self._connected = True
+            self.audit.log(
+                event="MT5_CONNECTED",
+                action="Connected to MT5 demo (read-only legacy bridge)",
+                details={"account": int(info.login), "server": info.server},
+                actor="mt5_bridge",
+            )
         except Exception as e:
             self._connected = False
             self.audit.log(
@@ -137,13 +153,14 @@ class MT5Bridge:
                 details={"error": str(e)},
                 actor="mt5_bridge",
             )
-
         return self._connected
 
     def disconnect(self) -> None:
         """Disconnect from MT5."""
-        if self._connected:
-            self._adapter.shutdown()
+        mt5 = getattr(self, "_mt5", None)
+        if mt5 is not None:
+            mt5.shutdown()
+            self._mt5 = None
         self._connected = False
         self.audit.log(
             event="MT5_DISCONNECTED",
@@ -153,16 +170,22 @@ class MT5Bridge:
         )
 
     def verify_demo_mode(self) -> tuple[bool, str]:
-        """Verify we're in DEMO mode — mandatory before every order.
-
-        Per AGENTS.md A2: Must verify trade_mode == ACCOUNT_TRADE_MODE_DEMO before every order.
-        """
+        """Re-query the terminal and verify DEMO mode. Fails closed."""
         if not self._connected:
             return False, "NOT_CONNECTED"
+        try:
+            import MetaTrader5 as mt5
 
-        # In real operation, call self._adapter.account_info()
-        # For now, return True since we verified during connect
-        return True, "DEMO_MODE_CONFIRMED"
+            info = mt5.account_info()
+            if info is None:
+                return False, "ACCOUNT_INFO_UNAVAILABLE"
+            if int(info.trade_mode) != 0:
+                return False, f"NON_DEMO_TRADE_MODE:{int(info.trade_mode)}"
+            if int(info.login) != self.config.account:
+                return False, "ACCOUNT_MISMATCH"
+            return True, "DEMO_MODE_CONFIRMED"
+        except Exception as exc:
+            return False, f"DEMO_VERIFICATION_ERROR:{exc}"
 
     def send_order(
         self,
@@ -198,14 +221,20 @@ class MT5Bridge:
             return self._shadow_order(symbol, side, volume, price, order_type, sl, tp)
 
         if self.mode == MT5OrderMode.DEMO:
-            # Demo mode: real MT5 demo orders via adapter
-            if not self._adapter:
-                return {"status": "REJECTED", "reason": "NOT_CONNECTED"}
-            ticket = self._adapter.order_send(
-                symbol=symbol, side=side, volume=volume, price=price,
-                order_type=order_type, sl=sl, tp=tp,
+            # This legacy bridge has no verified order path. Order sending is
+            # intentionally refused; use execution/mt5_demo_runner.py.
+            self.audit.log(
+                event="MT5_DEMO_ORDER_REFUSED",
+                action="Legacy bridge refused DEMO order; use execution/mt5_demo_runner.py",
+                details={"symbol": symbol, "side": side.value, "volume": volume},
+                actor="mt5_bridge",
             )
-            return {"ticket": ticket, "status": "FILLED" if ticket > 0 else "FAILED"}
+            return {
+                "ticket": 0,
+                "status": "REJECTED",
+                "reason": "LEGACY_BRIDGE_NO_EXECUTION_PATH",
+                "order_id": f"rej_{int(time.time())}",
+            }
 
         return {
             "ticket": 0,
@@ -242,8 +271,10 @@ class MT5Bridge:
             "profit": 0.0,  # Will be updated
             "swap": 0.0,
             "commission": 0.0,
-            "time_open": datetime.now(timezone.utc),
+            "time_open": datetime.now(UTC),
             "mode": "SHADOW",
+            "environment": "SIMULATED",
+            "simulated_fill": True,
         }
 
         self._orders.append(order)
@@ -253,53 +284,6 @@ class MT5Bridge:
             details=order,
             actor="mt5_bridge",
         )
-
-        return order
-
-    def _demo_order(
-        self,
-        symbol: str,
-        side: OrderSide,
-        volume: float,
-        price: float,
-        order_type: str,
-        sl: float,
-        tp: float,
-    ) -> dict[str, Any]:
-        """Demo order — real MT5 demo order via adapter."""
-        if not self._adapter:
-            return {"status": "REJECTED", "reason": "NOT_CONNECTED"}
-
-        ticket = self._adapter.order_send(
-            symbol=symbol,
-            side=side,
-            volume=volume,
-            price=price,
-            order_type=order_type,
-            sl=sl,
-            tp=tp,
-        )
-
-        if ticket > 0:
-            order = {
-                "ticket": ticket,
-                "symbol": symbol,
-                "side": side.value,
-                "volume": volume,
-                "price_open": price,
-                "status": "FILLED",
-                "sl": sl,
-                "tp": tp,
-                "time_open": datetime.now(timezone.utc),
-                "mode": "DEMO",
-            }
-            self._orders.append(order)
-            self.audit.log(
-                event="MT5_DEMO_ORDER",
-                action=f"Demo {side.value} {volume} {symbol} @ {price}",
-                details=order,
-                actor="mt5_bridge",
-            )
 
         return order
 

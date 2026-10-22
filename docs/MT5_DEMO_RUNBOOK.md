@@ -1,5 +1,15 @@
 # MT5 Demo Trading Algorithm — Operational Runbook
 
+> [!WARNING]
+> **SUPERSEDED — 2026-10-22/23.** This runbook describes the legacy
+> `mt5_quant_algo.py` path. It is retained for history only. The sanctioned demo
+> path is `execution/mt5_demo_runner.py` via `scripts/mt5_demo_runner.py`; read
+> `docs/fundingpips_mission_2026-10-22/mt5_demo_guide.md` and
+> `docs/fundingpips_mission_2026-10-22/execution_checklist.md` before running
+> anything. The legacy bridge no longer has a demo execution path and refuses
+> DEMO orders. The FundingPips mission concluded **no validated candidate and
+> deployment blocked**; do not treat this runbook as authority to trade.
+
 ## 1. System Overview
 
 This runbook covers setup, configuration, monitoring, and operational procedures for running the **Unified Donchian-50 XAUUSD Demo Trading Algorithm** (`mt5_quant_algo.py`) with FundingPips compliance enforcement.

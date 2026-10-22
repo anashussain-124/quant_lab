@@ -32,6 +32,12 @@ reports/
 data/store/
 reports_v4/**/trade_log.csv
 reports_v5/**/trade_log.csv
+reports_fundingpips/**/attempts.csv
+
+# Machine-readable mission evidence kept in git (the full attempts CSV is regenerable)
+!reports_fundingpips/final_status.json
+!reports_fundingpips/challenge_2026-10-22/challenge_report.json
+!reports_fundingpips/mt5_demo/check_2026-10-22T18-43Z.json
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/

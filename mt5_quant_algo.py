@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Unified Quant Research Lab + MT5 Demo-Trading Algorithm for XAUUSD.
+"""LEGACY research algorithm for XAUUSD — NOT the sanctioned execution path.
+
+Use ``execution/mt5_demo_runner.py`` for any demo order. This module predates
+the broker-spec sizing, fresh demo re-verification, fill verification and
+intent reconciliation required by the 2026-10-22 mission. It is retained for
+research/backtest compatibility only and logs a warning on construction.
 
 Coordinates:
 - engine.orchestrator: Lab coordination and system state
@@ -23,6 +28,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import math
 import os
 import signal
 import sys
@@ -79,7 +85,7 @@ class StrategyParameters:
     slippage_bps: float = 2.0
     commission_rate: float = 0.0004
     contract_size: float = 100.0      # 100 oz per lot for XAUUSD
-    point_value_usd: float = 10.0     # $10 per 1.0 lot per 0.01 move
+    point_value_usd: float = 1.0      # $1 per 1.0 lot per 0.01 move (100 oz * 0.01)
 
 
 @dataclass
@@ -145,6 +151,10 @@ class MT5QuantAlgorithm:
         self._running = False
         self._last_processed_bar_ts: Optional[str] = None
         self._load_algo_state()
+        logger.warning(
+            "LEGACY_UNVALIDATED: mt5_quant_algo is not the execution path; "
+            "use execution/mt5_demo_runner.py for demo orders"
+        )
 
     # ----------------------------------------------------------------------
     # Safety Verification
@@ -176,8 +186,7 @@ class MT5QuantAlgorithm:
             
             return True, f"DEMO verified (Account: {acc_info.login}, Server: {acc_info.server})"
         except ImportError:
-            # When MT5 is not installed / mocked
-            return True, "DEMO verified (MT5 library simulated/offline)"
+            return False, "MT5 library unavailable; DEMO status cannot be verified"
         except Exception as e:
             return False, f"MT5 demo verification exception: {e}"
 
@@ -351,18 +360,33 @@ class MT5QuantAlgorithm:
 
         # 9. Account State & Position Sizing
         balance, equity = self._get_account_balance_and_equity()
-        self.compliance.update_equity(balance=balance, equity=equity, timestamp=latest_closed.timestamp)
+        # Compliance is time-sensitive (daily reset). Never feed it bar time,
+        # which would rewind the daily reference and understate losses.
+        self.compliance.update_equity(
+            balance=balance, equity=equity, timestamp=datetime.now(timezone.utc)
+        )
 
         stop_distance = current_atr * self.params.atr_mult_stop
+        if stop_distance <= 0:
+            result["action"] = "NO_TRADE"
+            result["reason"] = "INVALID_STOP_DISTANCE"
+            self._last_processed_bar_ts = latest_ts_str
+            self._save_algo_state()
+            return result
         risk_dollars = equity * self.params.risk_per_trade_pct
 
-        # Calculate lots: 1 point (0.01) = $10 per lot
+        # $1 per point per 1.0 lot (100 oz * 0.01). Floor to broker step;
+        # never round up and never trade a size that exceeds the risk budget.
         stop_points = stop_distance / 0.01
         calculated_lots = risk_dollars / (stop_points * self.params.point_value_usd)
-        
-        # Round lots to broker step (0.01 min, 0.01 step)
-        lots = round(calculated_lots / 0.01) * 0.01
-        lots = max(0.01, min(lots, 10.0))
+        lots = math.floor(calculated_lots / 0.01) * 0.01
+        lots = round(lots, 2)
+        if lots < 0.01:
+            result["action"] = "NO_TRADE"
+            result["reason"] = f"BELOW_MIN_LOT ({calculated_lots:.4f} < 0.01)"
+            self._last_processed_bar_ts = latest_ts_str
+            self._save_algo_state()
+            return result
 
         # Stop loss & take profit levels
         if side == OrderSide.BUY:
@@ -420,8 +444,15 @@ class MT5QuantAlgorithm:
         )
         result["order_result"] = order_res
 
+        if order_res.get("status") == "REJECTED":
+            result["action"] = "NO_TRADE"
+            result["reason"] = f"EXECUTION_REFUSED: {order_res.get('reason', 'unknown')}"
+            self._last_processed_bar_ts = latest_ts_str
+            self._save_algo_state()
+            return result
+
         self.audit.log(
-            event="EXEC_ORDER_SUBMITTED",
+            event="EXEC_ORDER_SIMULATED" if order_res.get("mode") == "SHADOW" else "EXEC_ORDER_SUBMITTED",
             action=f"Executed {side.value} {lots} {self.params.symbol}",
             details=result["details"],
             actor="mt5_quant_algo",
@@ -432,15 +463,15 @@ class MT5QuantAlgorithm:
         return result
 
     def _get_account_balance_and_equity(self) -> tuple[float, float]:
-        """Fetch current balance and equity from MT5 or mock defaults."""
+        """Fetch current balance and equity, failing closed if unavailable."""
         try:
             import MetaTrader5 as mt5
-            acc = mt5.account_info()
-            if acc is not None:
-                return float(acc.balance), float(acc.equity)
-        except Exception:
-            pass
-        return 10000.0, 10000.0
+        except ImportError as exc:
+            raise RuntimeError("MT5 unavailable; cannot size a position") from exc
+        acc = mt5.account_info()
+        if acc is None:
+            raise RuntimeError("MT5 account_info() returned None; cannot size a position")
+        return float(acc.balance), float(acc.equity)
 
     # ----------------------------------------------------------------------
     # CLI Command Handlers

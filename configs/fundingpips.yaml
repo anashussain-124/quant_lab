@@ -1,108 +1,138 @@
-# FundingPips Challenge Configuration
+# FundingPips challenge configuration — version 2026-10-22
 # ============================================================
-# Select the challenge model, account size, and safety settings
-# for the prop firm compliance engine.
+# Verified against:
+#   https://help.fundingpips.com/hc/en-us/articles/34501809112081-2-Step-Standard
+#   https://help.fundingpips.com/hc/en-us/articles/34505029138449-Trading-Conduct-and-Security-Standards
 #
-# Available profile_ids:
-#   fundingpips_2step_standard_5pct_p1  (EMPIRICAL)
-#   fundingpips_2step_standard_5pct_p2  (EMPIRICAL)
-#   fundingpips_2step_standard_3pct_p1  (EMPIRICAL)
-#   fundingpips_2step_standard_3pct_p2  (EMPIRICAL)
-#   fundingpips_2step_pro_p1            (EMPIRICAL)
-#   fundingpips_2step_pro_p2            (EMPIRICAL)
-#   fundingpips_1step_flex_p1           (UNVERIFIED — blocked from execution)
-#
-# IMPORTANT: Verify all rules against https://fundingpips.com
-# before running on a real challenge account.
+# This file is research/deployment configuration. It does not enable trading.
 # ============================================================
+
+version: "2026-10-22"
+environment: "MT5_DEMO"
 
 prop_firm:
-  # Active challenge profile
   profile_id: "fundingpips_2step_standard_5pct_p1"
+  phase_2_profile_id: "fundingpips_2step_standard_5pct_p2"
 
-  # Override initial balance (must match your actual challenge account balance)
-  # If not set, the profile default is used.
-  # initial_balance_override: 10000.0
+  # The mission account. Must be one of the official sizes.
+  initial_balance: 5000.0
 
-  # Safety buffer: inner cushion applied inside hard rule limits.
-  # Prevents trades that would place equity right at the hard limit.
-  # 0.005 = 0.5% of initial_balance (e.g. $50 on a $10,000 account).
+  # Inner cushion inside the firm's hard limits. 0.005 = $25 on $5,000.
   safety_buffer_pct: 0.005
 
-  # Path to persisted compliance state file.
-  # Must survive process restarts. Change per challenge run.
-  state_file: "data/compliance_state.json"
+  # Warn at 70% of a limit consumed.
+  warn_threshold_pct: 0.70
 
-  # Warn the user when this fraction of a limit is consumed.
-  warn_threshold_pct: 0.70  # 70% of limit triggers WARNING state
+  # A fresh path: do not reuse any pre-existing 10K compliance state.
+  state_file: "data/compliance_state_5k_2026.json"
+
+  # FundingPips 2 Step Standard evaluation rules, verified 2026-10-22.
+  rules:
+    phase_1_target_pct: 0.08
+    phase_2_target_pct: 0.05
+    max_overall_loss_pct: 0.10       # static from starting balance
+    max_daily_loss_pct: 0.05         # 3% add-on variant is a sensitivity
+    min_trading_days: 3              # 0 with the 3% daily add-on
+    inactivity_max_days: 30
+    daily_reset_utc_hour: 21         # 00:00 platform time stated as UTC+3
+    account_sizes_usd: [5000, 10000, 25000, 50000, 100000]
+    metals_leverage: 30
+    xauusd_contract_size: 100        # 1 lot = 100 oz
+    min_volume_lots: 0.01
+    volume_step_lots: 0.01
+    commission_metals_usd_per_lot: 5.0
+    news_allowed_on_evaluation: true
+    overnight_weekend_allowed_on_evaluation: true
+
+challenge_simulation:
+  # Frozen v5 inputs. No tuning of these 50 configurations is permitted.
+  trade_log: "reports_v5/search_2026-10-22/trade_log.csv"
+  trade_log_sha256: "5384578e490df6f4ce4947e13fd07a722d4e71c825e489c1891495b138e2a270"
+  market_data: "data/store/v5/xauusd_h1_dev_validation.parquet"
+  market_data_sha256: "5dbace90244b3b7e422890ef285b29f8e3f20591266ae2db641ce60bb82e267e"
+  trial_report: "reports_v5/search_2026-10-22/report.json"
+
+  evaluation_start_utc: "2019-01-01T00:00:00+00:00"
+  evaluation_end_utc: "2022-12-30T23:00:00+00:00"
+  holdout_start_utc: "2023-01-01T00:00:00+00:00"
+
+  risk_fractions: [0.0010, 0.0025, 0.0050]
+
+  primary:
+    daily_loss_pct: 0.05
+    min_trading_days: 3
+    phase_2_resets_to: 5000.0
+    internal_daily_soft_guard_pct_of_start: 0.01
+    internal_overall_soft_guard_pct_of_start: 0.04
+
+  sensitivities:
+    strict_daily:
+      daily_loss_pct: 0.03
+      min_trading_days: 0
+    carry_phase_2:
+      enabled: true
+    firm_rules_only:
+      enabled: true
+
+  rolling_start:
+    first_utc: "2019-01-01T00:00:00+00:00"
+    last_utc: "2022-07-01T00:00:00+00:00"
+    step_days: 14
+    min_future_days: 180
+
+costs:
+  # v5 already charges spread, slippage and $7 round-turn commission.
+  v5_commission_round_turn_usd: 7.0
+  # FundingPips metals commission is "$5 per lot"; side basis is unstated.
+  # Primary adds the delta for $5 per side ($10 round turn).
+  primary_fundingpips_commission_round_turn_usd: 10.0
+  sensitivity_fundingpips_commission_round_turn_usd: 5.0
+  cost_stress_multiplier: 1.5
+  swap_source: "MetaQuotes-Demo XAUUSD (ASSUMPTION; FundingPips swap unverified)"
+
+mt5_demo_runner:
+  # Consumed by execution/mt5_demo_runner.py. Execution remains blocked by the
+  # deployment gate below even when a terminal is available.
+  symbol: "XAUUSD"
+  risk_fraction: 0.0025
+  max_spread_points: 50          # 0.50 USD on XAUUSD
+  max_tick_age_seconds: 5
+  # MT5 tick timestamps are broker server time, not UTC. Observed +3h on
+  # MetaQuotes-Demo on 2026-10-22. FundingPips' exact offset (UTC+2 winter /
+  # UTC+3 summer) is still an unresolved deployment blocker.
+  server_utc_offset_hours: 3
+  max_slippage_points: 20
+  magic: 20261022
+  risk_buffer_points: 5          # stop-gap/slippage allowance in the risk budget
+  max_margin_fraction: 0.25
+  max_open_positions: 1
+  state_dir: "data/mt5_demo_state"
+  expected_login: null
+  expected_server: null
+
+deployment:
+  # Nothing in this mission may arm or place a FundingPips order.
+  armed: false
+  order_sending_enabled: false
+  candidate_id: null
+  candidate_validated: false
+  blockers:
+    - "No FundingPips demo/evaluation credentials or server are available locally."
+    - "XAUUSD swap schedule on FundingPips is unverified."
+    - "Commission side basis ($5 per lot) is unstated by FundingPips."
+    - "Daily reset offset conflict: FAQ says UTC+3; Master auto-close table implies UTC+2 in winter."
+    - "Personal-EA proof-of-ownership review with FundingPips has not been performed."
+    - "All 50 v5 trials failed the frozen statistical gates; no candidate is demo-ready."
 
 # ---------------------------------------------------------------------------
-# Execution research parameters
+# Verified source values for the record (not runtime toggles)
 # ---------------------------------------------------------------------------
-# Which risk configurations to sweep when running:
-#   python mt5_quant_algo.py backtest --firm fundingpips
-# ---------------------------------------------------------------------------
-research:
-  # Risk fractions to test (fraction of account equity per trade)
-  risk_levels:
-    - 0.0025   # 0.25%
-    - 0.005    # 0.50%
-    - 0.0075   # 0.75%
-    - 0.01     # 1.00%
-
-  # Donchian channel period
-  donchian_period: 50
-
-  # ATR period
-  atr_period: 14
-
-  # Minimum ATR value in USD to allow a trade
-  # Configurable research parameter — NOT an assumed universal optimum.
-  # The documented threshold from strategy research is $8.00.
-  min_atr_usd: 8.0
-
-  # Session filter (London session in UTC)
-  session_start_utc: "08:00"
-  session_end_utc:   "16:00"
-
-  # ATR stop-loss multiplier
-  atr_stop_multiplier: 1.5
-
-  # Take-profit multiplier (0 = no TP, exit by trailing or time)
-  atr_tp_multiplier: 3.0
-
-  # Maximum holding period in H1 bars before time-stop
-  max_holding_bars: 120
-
-  # Walk-forward configuration
-  walk_forward:
-    train_months: 12
-    test_months: 3
-    min_test_trades: 10
-
-# ---------------------------------------------------------------------------
-# Available FundingPips account sizes and models for reference
-# (NOT runtime config — for documentation purposes only)
-# ---------------------------------------------------------------------------
-# models_reference:
-#   2step_standard_5pct:
-#     account_sizes: [5000, 10000, 25000, 50000, 100000, 200000]
-#     phase_1_target: 8%
-#     phase_2_target: 5%
-#     daily_loss: 5%
-#     total_loss: 10%
-#     min_days: 3
-#   2step_standard_3pct:
-#     account_sizes: [5000, 10000, 25000, 50000, 100000, 200000]
-#     daily_loss: 3%
-#     total_loss: 10%
-#     min_days: 0
-#   2step_pro:
-#     account_sizes: [5000, 10000, 25000, 50000, 100000, 200000]
-#     phase_1_target: 6%
-#     phase_2_target: 6%
-#     daily_loss: 3%
-#     total_loss: 6%
-#     min_days: 2
-#   1step_flex:
-#     note: "UNVERIFIED — check official site"
+# Phase 1: 8% profit target, minimum 3 trading days (0 with 3% daily add-on).
+# Phase 2: 5% profit target, same loss limits.
+# Overall: 10% of starting account size, static; equity or balance cannot touch it.
+# Daily: 3% or 5% of max(opening balance, opening equity); floating counts.
+# Inactivity: 30 consecutive calendar days without a completed trade.
+# Evaluation: news unrestricted; overnight and weekend holding allowed.
+# XAUUSD: 1 lot = 100 oz; metals leverage 1:30 on Standard evaluation.
+# Commission: metals $5/lot on Standard; $10/lot with Swap-Free/Swing.
+# Automation: personal EA full automation allowed with proof of ownership.

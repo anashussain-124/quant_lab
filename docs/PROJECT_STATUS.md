@@ -1,8 +1,32 @@
-# Project Status — 2026-10-22
+# Project Status — 2026-10-22 (UTC)
+
+**Lifecycle: CLOSED for strategy research. The 2026-10-22 FundingPips mission
+also ended with no validated candidate.** See `docs/fundingpips_mission_2026-10-22/`
+for the mission record, `docs/CLOSEOUT.md` for the v4 closeout, and
+`docs/V5_RESULT.md` for the v5 protocol, result, and provenance.
+
+## FundingPips mission (2026-10-22/23)
+
+- Branch: `research/fundingpips-2026`.
+- Verdict: **Outcome B — no validated edge, no candidate, deployment blocked.**
+- Rules: FundingPips 2-Step Standard verified and versioned in
+  `configs/fundingpips.yaml`; four critical details remain unverified and are
+  fail-closed blockers (swap, commission side basis, winter DST reset, credentials),
+  plus the personal-EA review.
+- Challenge simulation: 165,600 attempts, 1,800 cells, accounting invariants pass.
+  Primary case 0.50% risk: 100/4,600 passes (2.17%), zero firm breaches, median
+  675.8 days to pass; 7/50 configs produced any pass. A simulated pass is not a
+  FundingPips pass.
+- Risk/execution: 481 tests pass; strict mypy passes for the three core modules.
+  Live read-only MetaQuotes-Demo check is `BLOCKED` as designed; `order_check`
+  retcode 0/DONE, **no order transmitted**.
+- Holdout 2023-2026 remains sealed. No real-money trading occurred.
+- Full report: `docs/fundingpips_mission_2026-10-22/final_research_report.md`.
+
+## Prior v4/v5 status
 
 **Lifecycle: CLOSED. v4 closeout (tag `closeout-2026-10-22`) and the follow-up frozen
-v5 swing search both ended with no candidate.** See `docs/CLOSEOUT.md` for the v4 record
-and `docs/V5_RESULT.md` for the v5 protocol, result, and provenance.
+v5 swing search both ended with no candidate.**
 
 ## Verified
 

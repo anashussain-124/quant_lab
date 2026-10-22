@@ -1,0 +1,203 @@
+{
+  "environment": "MT5_DEMO",
+  "generated_utc": "2026-10-22T18:43:47.341653+00:00",
+  "config_sha256": "f935d9560f68efd691d0322d521976e63b1063b369f74628bc453500cedd23bc",
+  "account": {
+    "ok": true,
+    "reasons": [],
+    "login": 114370849,
+    "server": "MetaQuotes-Demo",
+    "trade_mode": 0,
+    "balance": 100000.0,
+    "equity": 100000.0,
+    "currency": "USD",
+    "leverage": 100,
+    "account_trade_allowed": true,
+    "account_trade_expert": true,
+    "terminal_connected": true,
+    "terminal_trade_allowed": false,
+    "terminal_company": "MetaQuotes Ltd.",
+    "terminal_name": "MetaTrader 5"
+  },
+  "terminal": {
+    "connected": true,
+    "trade_allowed": false,
+    "company": "MetaQuotes Ltd.",
+    "name": "MetaTrader 5"
+  },
+  "demo_verification": {
+    "ok": true,
+    "reasons": [],
+    "login": 114370849,
+    "server": "MetaQuotes-Demo",
+    "trade_mode": 0,
+    "balance": 100000.0,
+    "equity": 100000.0,
+    "currency": "USD",
+    "leverage": 100,
+    "account_trade_allowed": true,
+    "account_trade_expert": true,
+    "terminal_connected": true,
+    "terminal_trade_allowed": false,
+    "terminal_company": "MetaQuotes Ltd.",
+    "terminal_name": "MetaTrader 5"
+  },
+  "symbol_spec": {
+    "symbol": "XAUUSD",
+    "digits": 2,
+    "point": 0.01,
+    "tick_size": 0.01,
+    "reported_tick_value": 0.1,
+    "contract_size": 100.0,
+    "profit_per_unit_per_lot": 100.0,
+    "profit_buy_per_unit": 100.0,
+    "profit_sell_per_unit": 100.0,
+    "money_per_point_per_lot": 1.0,
+    "volume_min": 0.01,
+    "volume_max": 100.0,
+    "volume_step": 0.01,
+    "stops_level_points": 0,
+    "freeze_level_points": 0,
+    "currency_profit": "USD",
+    "trade_mode": 4,
+    "filling_mode": 3,
+    "execution_mode": 2,
+    "tick_value_consistent": false,
+    "warnings": [
+      "reported trade_tick_value=0.1 disagrees with order_calc_profit implied value=1.000000 per 0.01 move; sizing uses order_calc_profit + contract size"
+    ]
+  },
+  "tick": {
+    "symbol": "XAUUSD",
+    "bid": 4032.65,
+    "ask": 4032.98,
+    "spread_price": 0.32999999999992724,
+    "spread_points": 32.999999999992724,
+    "age_seconds": 0.204653076171875,
+    "time_utc": "2026-10-22T18:43:47.137000+00:00",
+    "raw_time_utc": "2026-10-22T21:43:47.137000+00:00",
+    "server_offset_seconds": 10800.0,
+    "ok": true,
+    "reasons": []
+  },
+  "server_time": {
+    "server_utc_offset_hours": 3.0,
+    "note": "MT5 tick timestamps are broker server time; normalized by this offset."
+  },
+  "sizing_preview": {
+    "approved": true,
+    "lots": 0.01,
+    "risk_usd": 10.15,
+    "risk_budget_usd": 12.5,
+    "per_lot_risk_usd": 1015.0,
+    "reason": "APPROVED",
+    "detail": {
+      "equity": 5000.0,
+      "risk_fraction": 0.0025,
+      "stop_distance": 10.0,
+      "extra_cost_per_lot_usd": 15.0,
+      "per_lot_risk_usd": 1015.0,
+      "min_lot_risk_usd": 10.15,
+      "risk_budget_usd": 12.5,
+      "room_cap_usd": 12.5,
+      "volume_step": 0.01,
+      "volume_min": 0.01,
+      "lots": 0.01,
+      "actual_risk_usd": 10.15,
+      "risk_utilization": 0.812
+    },
+    "hypothetical_account_balance": 5000.0,
+    "risk_fraction": 0.0025,
+    "stop_distance": 10.0,
+    "commission_plus_buffer_per_lot_usd": 15.0,
+    "note": "Hypothetical sizing on a $5,000 account using live broker specs. No order, no baseline, no account-state change."
+  },
+  "runner_settings": {
+    "risk_fraction": 0.0025,
+    "max_spread_points": 50.0,
+    "max_tick_age_seconds": 5.0,
+    "max_slippage_points": 20,
+    "commission_round_turn_per_lot_usd": 10.0,
+    "risk_buffer_points": 5.0,
+    "max_margin_fraction": 0.25,
+    "max_open_positions": 1,
+    "magic": 20261022
+  },
+  "deployment": {
+    "armed": false,
+    "order_sending_enabled": false,
+    "candidate_id": null,
+    "candidate_validated": false,
+    "blockers": [
+      "No FundingPips demo/evaluation credentials or server are available locally.",
+      "XAUUSD swap schedule on FundingPips is unverified.",
+      "Commission side basis ($5 per lot) is unstated by FundingPips.",
+      "Daily reset offset conflict: FAQ says UTC+3; Master auto-close table implies UTC+2 in winter.",
+      "Personal-EA proof-of-ownership review with FundingPips has not been performed.",
+      "All 50 v5 trials failed the frozen statistical gates; no candidate is demo-ready."
+    ],
+    "gate_reasons": [
+      "CONFIG_NOT_ARMED",
+      "ORDER_SENDING_DISABLED",
+      "NO_CANDIDATE_ID",
+      "CANDIDATE_NOT_VALIDATED",
+      "DEPLOYMENT_BLOCKERS_PRESENT"
+    ]
+  },
+  "execution_gate": {
+    "status": "BLOCKED",
+    "reasons": [
+      "CONFIG_NOT_ARMED",
+      "ORDER_SENDING_DISABLED",
+      "NO_CANDIDATE_ID",
+      "CANDIDATE_NOT_VALIDATED",
+      "DEPLOYMENT_BLOCKERS_PRESENT",
+      "ACCOUNT_BALANCE_NOT_INITIAL(100000.00!=5000.00)",
+      "TERMINAL_AUTOTRADING_DISABLED"
+    ],
+    "baseline_reasons": [
+      "ACCOUNT_BALANCE_NOT_INITIAL(100000.00!=5000.00)"
+    ]
+  },
+  "reconciliation": {
+    "environment": "MT5_DEMO",
+    "ok_for_new_entries": true,
+    "reasons": [],
+    "open_positions": 0,
+    "foreign_positions": 0,
+    "orphan_positions": [],
+    "unresolved_intents": [],
+    "updates": [],
+    "positions": []
+  },
+  "kill_switch": null,
+  "order_plumbing": {
+    "performed": true,
+    "transmitted": false,
+    "request": {
+      "action": 1,
+      "symbol": "XAUUSD",
+      "volume": 0.01,
+      "type": 0,
+      "price": 4032.98,
+      "sl": 4022.98,
+      "tp": 0.0,
+      "deviation": 20,
+      "magic": 20261022,
+      "comment": "QL-PLUMBING",
+      "type_time": 0,
+      "type_filling": 1
+    },
+    "retcode": 0,
+    "retcode_name": "DONE",
+    "margin": 40.33,
+    "margin_free": 99959.67,
+    "comment": "Done",
+    "note": "order_check validates margin/price only; no order is placed."
+  },
+  "caveats": [
+    "Order plumbing uses order_check only; it never transmits an order.",
+    "A READY status would still require a validated candidate and human sign-off.",
+    "Simulated/demo results are not proof of live viability."
+  ]
+}
