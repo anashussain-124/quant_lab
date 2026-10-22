@@ -6,7 +6,7 @@ import pandas as pd
 from engine.backtester_v2 import CostModel
 from engine.research_runner import ResearchRunner
 from strategies.real_strategies import MomentumBreakout
-from strategies.real_strategies import FundingCarryReal
+from strategies.real_strategies import FundingContrarianDirectional
 
 
 def _bars(n: int = 90) -> pd.DataFrame:
@@ -64,7 +64,7 @@ def test_invalid_real_strategy_parameters_fail_closed() -> None:
 
 
 def test_funding_no_trade_signal_cannot_become_take_via_edge(monkeypatch) -> None:
-    strategy = FundingCarryReal(lookback=3)
+    strategy = FundingContrarianDirectional(lookback=3)
     signal = strategy.generate_signal(pd.DataFrame({"funding_rate": [0.0, 0.0, 0.0]}))
     signal.confidence = 0.7
     assert strategy.estimate_edge(signal) == 0.0
@@ -72,3 +72,8 @@ def test_funding_no_trade_signal_cannot_become_take_via_edge(monkeypatch) -> Non
     result = strategy.run(pd.DataFrame())
     assert result.signal.action.value == "NO_TRADE"
     assert result.signal.edge == 0.0
+
+
+def test_funding_strategy_is_explicitly_not_delta_neutral_carry() -> None:
+    strategy = FundingContrarianDirectional()
+    assert "delta-neutral" in strategy.__doc__

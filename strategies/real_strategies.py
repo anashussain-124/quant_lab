@@ -159,10 +159,12 @@ class MeanReversionZScore(BaseStrategy):
         return f"Mean reversion: {signal.side} at {signal.price}, {signal.reason_codes}"
 
 
-class FundingCarryReal(BaseStrategy):
-    """Real funding rate carry strategy.
+class FundingContrarianDirectional(BaseStrategy):
+    """Directional funding-rate contrarian strategy, not true carry.
 
-    Uses CCXT to fetch funding rates from perpetual markets.
+    Uses funding rates from perpetual markets to choose a directional bet.
+    True carry requires a delta-neutral spot+perp model with explicit basis
+    and funding-payment accounting; this strategy is not that model.
     """
 
     def __init__(self, lookback: int = 8):

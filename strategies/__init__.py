@@ -202,11 +202,11 @@ def _register_real_strategies():
     from strategies.real_strategies import (
         MomentumBreakout,
         MeanReversionZScore,
-        FundingCarryReal,
+        FundingContrarianDirectional,
     )
     STRATEGY_REGISTRY["momentum_breakout_real"] = MomentumBreakout
     STRATEGY_REGISTRY["mean_reversion_zscore"] = MeanReversionZScore
-    STRATEGY_REGISTRY["funding_carry_real"] = FundingCarryReal
+    STRATEGY_REGISTRY["funding_contrarian_directional"] = FundingContrarianDirectional
 
 
 _register_real_strategies()
