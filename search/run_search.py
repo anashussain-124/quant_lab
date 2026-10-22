@@ -35,7 +35,15 @@ class TrialOutcome:
 
 
 def _sample(rng: np.random.Generator, ranges: dict[str, tuple[float, ...]]) -> dict[str, float]:
-    return {key: float(rng.uniform(min(values), max(values))) for key, values in ranges.items()}
+    sampled: dict[str, float] = {}
+    for key, values in ranges.items():
+        # Integer-valued bounds describe discrete choices (periods, hours, bars),
+        # not a continuous interval that is later rounded and can collapse trials.
+        if len(values) > 1 and all(float(value).is_integer() for value in values):
+            sampled[key] = float(rng.choice(np.asarray(values, dtype=float)))
+        else:
+            sampled[key] = float(rng.uniform(min(values), max(values)))
+    return sampled
 
 
 def _trades(frame: pd.DataFrame, plan: SignalPlan, multiplier: float = 1.0) -> list[SimTrade]:
