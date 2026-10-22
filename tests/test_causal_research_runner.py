@@ -6,6 +6,7 @@ import pandas as pd
 from engine.backtester_v2 import CostModel
 from engine.research_runner import ResearchRunner
 from strategies.real_strategies import MomentumBreakout
+from strategies.real_strategies import FundingCarryReal
 
 
 def _bars(n: int = 90) -> pd.DataFrame:
@@ -60,3 +61,14 @@ def test_invalid_real_strategy_parameters_fail_closed() -> None:
         pass
     else:
         raise AssertionError("invalid strategy parameters must be rejected")
+
+
+def test_funding_no_trade_signal_cannot_become_take_via_edge(monkeypatch) -> None:
+    strategy = FundingCarryReal(lookback=3)
+    signal = strategy.generate_signal(pd.DataFrame({"funding_rate": [0.0, 0.0, 0.0]}))
+    signal.confidence = 0.7
+    assert strategy.estimate_edge(signal) == 0.0
+    monkeypatch.setattr(strategy, "generate_signal", lambda data: signal)
+    result = strategy.run(pd.DataFrame())
+    assert result.signal.action.value == "NO_TRADE"
+    assert result.signal.edge == 0.0

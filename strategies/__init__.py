@@ -68,14 +68,19 @@ class BaseStrategy(ABC):
 
     def run(self, data: pd.DataFrame) -> StrategyResult:
         signal = self.generate_signal(data)
-        edge = self.estimate_edge(signal)
+        if signal.action != SignalAction.TAKE:
+            edge = 0.0
+        else:
+            edge = self.estimate_edge(signal)
         risk = self.estimate_risk(signal)
         conf = self.confidence(signal)
         explanation = self.explain(signal)
 
         return StrategyResult(
             signal=Signal(
-                action=SignalAction.TAKE if edge > 0 else SignalAction.NO_TRADE,
+                action=signal.action if signal.action != SignalAction.TAKE else (
+                    SignalAction.TAKE if edge > 0 else SignalAction.NO_TRADE
+                ),
                 symbol=signal.symbol,
                 side=signal.side,
                 quantity=signal.quantity,

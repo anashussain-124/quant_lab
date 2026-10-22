@@ -209,6 +209,8 @@ class FundingCarryReal(BaseStrategy):
         )
 
     def estimate_edge(self, signal: Signal) -> float:
+        if signal.action != SignalAction.TAKE:
+            return 0.0
         return signal.confidence * 0.001
 
     def estimate_risk(self, signal: Signal) -> float:
