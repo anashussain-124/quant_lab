@@ -101,4 +101,4 @@ def test_final_open_position_is_closed_with_exit_costs() -> None:
     volume = float(trade.volume)
     expected = ((2010.0 - 0.05) - (2000.0 + 1.0 + 0.05)) * volume * 100 - 2 * 2.5 * volume
     assert trade.reason == "END_OF_DATA"
-    assert trade.pnl == expected
+    assert trade.pnl == pytest.approx(expected)
