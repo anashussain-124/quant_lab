@@ -32,5 +32,6 @@ and `docs/V5_RESULT.md` for the v5 protocol, result, and provenance.
 ## Single best next task
 
 None under the frozen protocol; it forbids post-result tuning. A further attempt requires
-a new pre-registration with a different hypothesis class, its own trial budget, and a fresh
-holdout policy. The sealed 2023-2026 data must not be reused for that design.
+a new pre-registration with a different hypothesis class and its own trial budget. The
+sealed 2023-2026 data remains an untouched holdout for such a program, but must not inform
+its design.
