@@ -21,8 +21,8 @@ def run_dry_run(input_path: Path, *, trials: int = 200, output_dir: Path = Path(
         frame = frame.set_index("timestamp")
     frame = frame.sort_index()
     training = ResearchDataAccessor(frame).training_data()
-    # 5,000 bars bounds the dry-run while retaining enough history for all templates.
-    sample = training.iloc[:5000].copy()
+    # Use every non-holdout bar.  The accessor physically excludes the final holdout.
+    sample = training.copy()
     features = {"ema": causal_ema(sample["close"], 20), "atr": causal_atr(sample, 20)}
     registry = output_dir / "dry_run_registry.jsonl"
     outcomes = run_search(sample, trials=trials, seed=7, registry_path=registry)

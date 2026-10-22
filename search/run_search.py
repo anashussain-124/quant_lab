@@ -10,7 +10,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from execution.causal_sim import CostConfig, SimTrade, simulate_next_open
+from execution.causal_sim import CostConfig, SimTrade
+from execution.fast_sim import simulate_next_open_fast
 from hypotheses.generators import GENERATORS, SignalPlan
 from hypotheses.registry import hypothesis_registry
 from search.registry import ExperimentRegistry, code_hash
@@ -53,13 +54,13 @@ def _trades(frame: pd.DataFrame, plan: SignalPlan, multiplier: float = 1.0) -> l
     spread_price = spread_points * 0.01
     mid = float(frame["close"].mean())
     bps = max(0.01, spread_price / mid * 10000.0) * multiplier
-    return simulate_next_open(frame, plan.signals,
-                              stop_distance=Decimal(str(plan.stop_distance)),
-                              target_distance=Decimal(str(plan.target_distance)),
-                              max_hold=plan.max_hold,
-                              costs=CostConfig(spread_bps=Decimal(str(bps)),
-                                               slippage_bps=Decimal(str(bps / 2)),
-                                               commission_bps=Decimal("0")))
+    return simulate_next_open_fast(frame, plan.signals,
+                                   stop_distance=Decimal(str(plan.stop_distance)),
+                                   target_distance=Decimal(str(plan.target_distance)),
+                                   max_hold=plan.max_hold,
+                                   costs=CostConfig(spread_bps=Decimal(str(bps)),
+                                                    slippage_bps=Decimal(str(bps / 2)),
+                                                    commission_bps=Decimal("0")))
 
 
 def _r_values(trades: list[SimTrade], stop: float) -> np.ndarray:
@@ -143,7 +144,7 @@ def main() -> int:
     frame = pd.read_parquet(args.input)
     if "timestamp" in frame.columns:
         frame = frame.set_index("timestamp")
-    outcomes = run_search(frame.sort_index().iloc[:5000], trials=args.trials)
+    outcomes = run_search(frame.sort_index(), trials=args.trials)
     for result in outcomes:
         print(result.trial, result.hypothesis, result.n, result.mean_net_r, result.gate.verdict)
     return 0
