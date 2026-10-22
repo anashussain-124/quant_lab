@@ -33,6 +33,7 @@ class TrialOutcome:
     neighborhood_stability: float
     cost_stress_1_5x: float
     cost_stress_2x: float
+    degenerate: bool = False
 
 
 def _sample(rng: np.random.Generator, ranges: dict[str, tuple[float, ...]]) -> dict[str, float]:
@@ -79,6 +80,11 @@ def run_search(frame: pd.DataFrame, *, trials: int = 200, seed: int = 7,
     source_root = Path(__file__).resolve().parents[1]
     source_hash = code_hash(source_root)
     specs = hypothesis_registry()
+    wiring: dict[str, bool] = {}
+    for spec in specs:
+        first = {key: float(values[0]) for key, values in spec.parameter_ranges.items()}
+        last = {key: float(values[-1]) for key, values in spec.parameter_ranges.items()}
+        wiring[spec.name] = GENERATORS[spec.name](frame, first).signals != GENERATORS[spec.name](frame, last).signals
     outcomes: list[TrialOutcome] = []
     for trial in range(trials):
         spec = specs[trial % len(specs)]
@@ -117,6 +123,7 @@ def run_search(frame: pd.DataFrame, *, trials: int = 200, seed: int = 7,
                                if frame.index[min(trade.exit_index, len(frame) - 1)].year == year]
                 if year_values:
                     regimes[f"year_{year}"] = year_values
+        degenerate = not wiring[spec.name]
         gate = evaluate_candidate(values, folds, registry_trials=max(1, registry.trial_count()),
                                   gross_permutation_percentile=perm.gross_percentile if perm else None,
                                   net_permutation_percentile=perm.net_percentile if perm else None,
@@ -129,13 +136,14 @@ def run_search(frame: pd.DataFrame, *, trials: int = 200, seed: int = 7,
                               deflated_sharpe(values, max(1, registry.trial_count() + 1)) if len(values) > 1 else float("nan"),
                               float(sum(x > 0 for x in neighbors) / len(neighbors)) if neighbors else 0.0,
                               float(stressed.mean()) if len(stressed) else float("nan"),
-                              float(stressed_2.mean()) if len(stressed_2) else float("nan"))
+                              float(stressed_2.mean()) if len(stressed_2) else float("nan"), degenerate)
         outcomes.append(result)
         registry.record(strategy=spec.name, params=params, data_hash=input_hash,
                         code_hash_value=source_hash, results={"verdict": gate.verdict, "n": len(values),
                                                                   "mean_net_r": result.mean_net_r,
                                                                   "funnel": gate.funnel,
-                                                                  "reasons": gate.reasons}, seed=seed + trial)
+                                                                  "reasons": gate.reasons,
+                                                                  "degenerate": degenerate}, seed=seed + trial)
     return outcomes
 
 

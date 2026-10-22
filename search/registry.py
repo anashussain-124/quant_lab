@@ -34,7 +34,13 @@ class ExperimentRegistry:
             handle.write(json.dumps(record, sort_keys=True) + "\n")
         return record
 
-    def trial_count(self) -> int:
+    def records(self) -> list[dict[str, Any]]:
         if not self.path.exists():
-            return 0
-        return sum(1 for line in self.path.read_text(encoding="utf-8").splitlines() if line.strip())
+            return []
+        return [json.loads(line) for line in self.path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+    def trial_count(self, *, include_degenerate: bool = False) -> int:
+        records = self.records()
+        if include_degenerate:
+            return len(records)
+        return sum(not bool(record.get("results", {}).get("degenerate", False)) for record in records)
