@@ -36,6 +36,19 @@ The Parquet snapshot must be retained with its report. Reports include the
 input data hash, configuration hash, code version, environment label, and data
 quality summary.
 
+Verified run completed on 2026-10-22 from the MT5 demo terminal:
+
+- Snapshot: `reports/verified_2026-10-22/input_m5.parquet`
+- Rows: 210,212
+- UTC range: 2023-10-23 14:10:00 to 2026-10-21 09:25:00
+- Duplicate timestamps: 0
+- Gaps over five minutes: 817; these were not silently filled
+- Spread column: present
+- Snapshot SHA-256: `30f58642248ffe9c80547879ca5705385bb5de0d195e8d16ca646f55a762c1ee`
+
+The MT5 terminal was used as a demo data source. The historical research run
+did not invoke order routing.
+
 ## Execution assumptions
 
 The current V3 engine assumes BID OHLC bars, uses observed spread when present
