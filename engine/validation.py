@@ -13,6 +13,10 @@ import pandas as pd
 from dataclasses import dataclass, field
 from typing import Any
 from enum import Enum
+from math import erf, log, sqrt
+from pathlib import Path
+import json
+from datetime import datetime, timezone
 
 
 class ValidationResultType(str, Enum):
@@ -432,3 +436,67 @@ class ValidationFramework:
     def get_reports(self) -> list[ValidationReport]:
         """Get all validation reports."""
         return list(self._reports)
+
+
+def _normal_cdf(x: float) -> float:
+    return 0.5 * (1.0 + erf(x / sqrt(2.0)))
+
+
+def t_test_mean(values: np.ndarray) -> dict[str, float | int | str]:
+    """Return a two-sided t statistic and normal-tail p approximation."""
+    values = np.asarray(values, dtype=float)
+    n = int(values.size)
+    mean = float(values.mean()) if n else 0.0
+    std = float(values.std(ddof=1)) if n > 1 else 0.0
+    t_stat = mean / (std / sqrt(n)) if n > 1 and std > 0 else (float("inf") if mean > 0 else 0.0)
+    p_value = 2.0 * (1.0 - _normal_cdf(abs(t_stat))) if np.isfinite(t_stat) else 0.0
+    return {"n": n, "mean": mean, "t_stat": t_stat, "p_value": p_value,
+            "sample_flag": "INSUFFICIENT SAMPLE" if n < 300 else "OK"}
+
+
+def purged_walk_forward(values: np.ndarray, folds: int = 6, embargo: int = 20) -> list[dict[str, float | int]]:
+    """Chronological test folds with an embargo-sized gap before each test fold."""
+    values = np.asarray(values, dtype=float)
+    results: list[dict[str, float | int]] = []
+    boundaries = np.linspace(0, len(values), folds + 1, dtype=int)
+    for fold in range(folds):
+        test_start, test_end = boundaries[fold], boundaries[fold + 1]
+        test = values[test_start:test_end]
+        gross_win = float(test[test > 0].sum())
+        gross_loss = abs(float(test[test < 0].sum()))
+        results.append({"fold": fold + 1, "train_end": max(0, test_start - embargo),
+                        "test_start": test_start, "test_end": test_end,
+                        "trade_count": int(len(test)), "mean_R": float(test.mean()) if len(test) else 0.0,
+                        "net_pf": gross_win / gross_loss if gross_loss else (float("inf") if gross_win else 0.0)})
+    return results
+
+
+def permutation_percentile(signal_positions: np.ndarray, outcomes: np.ndarray, iterations: int = 1000, seed: int = 7) -> float:
+    """Circularly shift a fixed-count signal series against outcome bars."""
+    rng = np.random.default_rng(seed)
+    signal = np.asarray(signal_positions, dtype=float)
+    result = np.asarray(outcomes, dtype=float)
+    if signal.size != result.size or signal.sum() <= 0:
+        return float("nan")
+    real = float(np.dot(signal, result))
+    null = np.empty(iterations, dtype=float)
+    for i in range(iterations):
+        null[i] = float(np.dot(np.roll(signal, int(rng.integers(0, signal.size))), result))
+    return float((np.sum(null <= real) + 1) / (iterations + 1) * 100.0)
+
+
+def deflated_sharpe_ratio(values: np.ndarray, trials: int) -> float:
+    """Conservative DSR approximation against the expected maximum trial Sharpe."""
+    values = np.asarray(values, dtype=float)
+    if values.size < 2 or values.std(ddof=1) == 0:
+        return 0.0
+    sharpe = float(values.mean() / values.std(ddof=1) * sqrt(values.size))
+    expected_max = sqrt(2.0 * log(max(2, trials)))
+    return _normal_cdf(sharpe - expected_max)
+
+
+def append_trial(path: Path, record: dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    record = {"timestamp_utc": datetime.now(timezone.utc).isoformat(), **record}
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record, sort_keys=True, default=str) + "\n")
