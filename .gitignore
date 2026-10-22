@@ -31,6 +31,7 @@ reports/
 # Closeout artifacts: raw/generated data stays out of git, preserved in the archive
 data/store/
 reports_v4/**/trade_log.csv
+reports_v5/**/trade_log.csv
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
