@@ -120,7 +120,9 @@ def run_search(frame: pd.DataFrame, *, trials: int = 200, seed: int = 7,
         outcomes.append(result)
         registry.record(strategy=spec.name, params=params, data_hash=input_hash,
                         code_hash_value=source_hash, results={"verdict": gate.verdict, "n": len(values),
-                                                                  "mean_net_r": result.mean_net_r}, seed=seed + trial)
+                                                                  "mean_net_r": result.mean_net_r,
+                                                                  "funnel": gate.funnel,
+                                                                  "reasons": gate.reasons}, seed=seed + trial)
     return outcomes
 
 

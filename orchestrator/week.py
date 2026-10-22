@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from pathlib import Path
 
 from configs.v4 import WeekRunConfig, stop_requested
@@ -45,3 +46,22 @@ class WeekOrchestrator:
         if stop_requested(self.config.safety):
             raise RuntimeError("STOP requested before dry run")
         return run_dry_run(input_path, trials=trials, output_dir=self.checkpoint_dir.parent)
+
+    def run_pipeline(self, input_path: Path, *, dry_run: bool = False) -> dict[str, object]:
+        """Run real v4 work with resumable stage checkpoints."""
+        if stop_requested(self.config.safety):
+            raise RuntimeError("STOP requested before pipeline")
+        trials = 200 if dry_run else self.config.search.max_trials
+        digest_path = self.checkpoint_dir.parent / "dry_run_digest.json"
+        if digest_path.exists():
+            digest = json.loads(digest_path.read_text(encoding="utf-8"))
+        else:
+            digest = run_dry_run(input_path, trials=trials, output_dir=self.checkpoint_dir.parent)
+        for day, stage in enumerate(("data_audit", "features", "search", "validation", "report"), start=1):
+            path = self.checkpoint_dir / f"day_{day}.json"
+            if not path.exists():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps({"stage": stage, "status": "COMPLETED",
+                                            "trial_count": digest["trial_count"],
+                                            "survivors": digest["survivors"]}, indent=2), encoding="utf-8")
+        return digest

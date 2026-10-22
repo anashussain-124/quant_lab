@@ -42,6 +42,7 @@ def run_dry_run(input_path: Path, *, trials: int = 200, output_dir: Path = Path(
                            "neighborhood_stability": item.neighborhood_stability,
                            "cost_stress_1_5x": item.cost_stress_1_5x,
                            "cost_stress_2x": item.cost_stress_2x, "verdict": item.gate.verdict}
+                           | {"funnel": item.gate.funnel, "reasons": item.gate.reasons}
                           for item in outcomes], "monte_carlo": mc}
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "dry_run_digest.json").write_text(json.dumps(digest, indent=2, default=str), encoding="utf-8")
