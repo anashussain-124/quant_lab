@@ -22,8 +22,16 @@ from decimal import Decimal
 from datetime import datetime, timezone
 
 from engine.backtester_v2 import (
-    Order, OrderSide, OrderStatus, BacktestResult, CostModel, EventDrivenBacktester
+    Order, OrderSide, OrderStatus, BacktestResult, CostModel, EventDrivenBacktester, PnlLedger
 )
+
+
+def test_decimal_pnl_ledger_sums_10000_small_trades_exactly():
+    ledger = PnlLedger()
+    for _ in range(10_000):
+        ledger.record("0.01", "0.001", "0.0001")
+    assert ledger.net_pnl == Decimal("89.0000")
+    assert ledger.net_pnl == sum((Decimal("0.0089") for _ in range(10_000)), Decimal("0"))
 from engine.safety_gate import SafetyGate, RiskContext, LabConfig
 from engine.leakage_canary import LeakageCanary, CanaryResult
 from libs.quant_math import (

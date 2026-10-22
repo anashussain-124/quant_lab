@@ -69,6 +69,22 @@ class Order:
             f"@ {self.price} [{self.status.value}])"
         )
 
+    @property
+    def quantity_money(self) -> Decimal:
+        return _money(self.quantity)
+
+    @property
+    def price_money(self) -> Decimal:
+        return _money(self.price)
+
+    @property
+    def fill_price_money(self) -> Decimal | None:
+        return None if self.fill_price is None else _money(self.fill_price)
+
+    @property
+    def fill_quantity_money(self) -> Decimal | None:
+        return None if self.fill_quantity is None else _money(self.fill_quantity)
+
 
 @dataclass
 class BacktestResult:
@@ -107,6 +123,39 @@ class BacktestResult:
             "pipeline_broken": self.pipeline_broken,
             "leakage_flagged": self.leakage_flagged,
         }
+
+
+def _money(value: Decimal | float | int | str) -> Decimal:
+    """Convert external numeric values without inheriting binary float error."""
+    return value if isinstance(value, Decimal) else Decimal(str(value))
+
+
+@dataclass
+class PnlLedger:
+    """Exact Decimal ledger for order/fill PnL and transaction costs."""
+
+    gross_pnl: Decimal = Decimal("0")
+    total_fees: Decimal = Decimal("0")
+    total_slippage: Decimal = Decimal("0")
+    net_pnl: Decimal = Decimal("0")
+    trades: int = 0
+
+    def record(
+        self,
+        gross_pnl: Decimal | float | int | str,
+        fees: Decimal | float | int | str = 0,
+        slippage: Decimal | float | int | str = 0,
+    ) -> Decimal:
+        gross = _money(gross_pnl)
+        fee = _money(fees)
+        slip = _money(slippage)
+        net = gross - fee - slip
+        self.gross_pnl += gross
+        self.total_fees += fee
+        self.total_slippage += slip
+        self.net_pnl += net
+        self.trades += 1
+        return net
 
 
 class CostModel:
@@ -381,6 +430,7 @@ class EventDrivenBacktester:
             context = RiskContext()
 
         orders: list[Order] = []
+        ledger = PnlLedger()
         total_pnl = 0.0
         total_fees = 0.0
         total_slippage = 0.0
@@ -419,7 +469,15 @@ class EventDrivenBacktester:
             order = self.simulate_execution(order, fill_price, fill_qty)
 
             # Compute P&L
-            pnl = (fill_price - order.price) * order.quantity if order.side == OrderSide.BUY else (order.price - fill_price) * order.quantity
+            fill_price_money = order.fill_price_money
+            fill_quantity_money = order.fill_quantity_money
+            assert fill_price_money is not None and fill_quantity_money is not None
+            pnl_money = (
+                (fill_price_money - order.price_money) * fill_quantity_money
+                if order.side == OrderSide.BUY
+                else (order.price_money - fill_price_money) * fill_quantity_money
+            )
+            pnl = float(pnl_money)
 
             # Compute total cost
             notional = fill_price * fill_qty
@@ -430,8 +488,8 @@ class EventDrivenBacktester:
                 volume=fill_qty,
             )
 
-            net_pnl = pnl - costs["total_cost"]
-            total_pnl += net_pnl
+            net_pnl_money = ledger.record(pnl_money, costs["total_cost"])
+            net_pnl = float(net_pnl_money)
             total_fees += costs["fees"]
             total_slippage += costs["slippage"]
 
@@ -441,6 +499,8 @@ class EventDrivenBacktester:
             else:
                 losing_trades += 1
                 gross_loss += abs(net_pnl)
+
+        total_pnl = float(ledger.net_pnl)
 
         # Compute result metrics
         total_trades = len(orders) if orders else len(self._orders)
