@@ -6,17 +6,18 @@ Per AGENTS.md A4 & A7:
 - DSR, PSR, PBO, AUUC, training_error_evaluation, sensitivity
 - No look-ahead bias
 """
+
 from __future__ import annotations
 
-import numpy as np
-import pandas as pd
+import json
 from dataclasses import dataclass, field
-from typing import Any
+from datetime import UTC, datetime
 from enum import Enum
 from math import erf, log, sqrt
 from pathlib import Path
-import json
-from datetime import datetime, timezone
+from typing import Any
+
+import numpy as np
 
 
 class ValidationResultType(str, Enum):
@@ -29,6 +30,7 @@ class ValidationResultType(str, Enum):
 @dataclass
 class WalkForwardResult:
     """Result of a walk-forward validation."""
+
     folds: int = 0
     in_sample_sharpe: float = 0.0
     out_of_sample_sharpe: float = 0.0
@@ -45,6 +47,7 @@ class WalkForwardResult:
 @dataclass
 class ParameterStabilityResult:
     """Parameter stability analysis result."""
+
     parameter_name: str
     stability_score: float  # 0-1, higher = more stable
     sensitivity: float  # How much performance changes with small parameter shifts
@@ -56,6 +59,7 @@ class ParameterStabilityResult:
 @dataclass
 class ValidationReport:
     """Complete validation report."""
+
     strategy_name: str
     walk_forward: WalkForwardResult | None = None
     parameter_stability: list[ParameterStabilityResult] = field(default_factory=list)
@@ -260,7 +264,7 @@ class ValidationFramework:
         mean_excess = np.mean(excess)
 
         if downside_std == 0:
-            return float('inf') if mean_excess > 0 else 0.0
+            return float("inf") if mean_excess > 0 else 0.0
 
         return float(mean_excess / downside_std * np.sqrt(252))
 
@@ -278,6 +282,7 @@ class ValidationFramework:
             return 0.0
 
         from scipy.stats import norm
+
         n = len(returns)
         mean_ret = np.mean(returns)
         std_ret = np.std(returns, ddof=1)
@@ -362,9 +367,7 @@ class ValidationFramework:
         - DSR, PSR, PBO, AUUC computed
         - Parameters fitted on training, tested on test data
         """
-        walk_forward_result = self.walk_forward.validate(
-            returns, strategy_name, parameter_grid
-        )
+        walk_forward_result = self.walk_forward.validate(returns, strategy_name, parameter_grid)
 
         # Compute DSR
         dsr = self.compute_dsr(returns)
@@ -388,18 +391,11 @@ class ValidationFramework:
         if parameter_grid:
             for param_name, values in parameter_grid.items():
                 base_value = values[len(values) // 2]
-                result = self.param_analyzer.analyze(
-                    param_name, base_value, self._simulate_performance, values
-                )
+                result = self.param_analyzer.analyze(param_name, base_value, self._simulate_performance, values)
                 param_stability.append(result)
 
         # Check validation passed
-        validation_passed = (
-            walk_forward_result.all_passed
-            and dsr > 0.5
-            and psr > 0.5
-            and pbo < 0.5
-        )
+        validation_passed = walk_forward_result.all_passed and dsr > 0.5 and psr > 0.5 and pbo < 0.5
 
         flags = []
         if not walk_forward_result.all_passed:
@@ -450,8 +446,13 @@ def t_test_mean(values: np.ndarray) -> dict[str, float | int | str]:
     std = float(values.std(ddof=1)) if n > 1 else 0.0
     t_stat = mean / (std / sqrt(n)) if n > 1 and std > 0 else (float("inf") if mean > 0 else 0.0)
     p_value = 2.0 * (1.0 - _normal_cdf(abs(t_stat))) if np.isfinite(t_stat) else 0.0
-    return {"n": n, "mean": mean, "t_stat": t_stat, "p_value": p_value,
-            "sample_flag": "INSUFFICIENT SAMPLE" if n < 300 else "OK"}
+    return {
+        "n": n,
+        "mean": mean,
+        "t_stat": t_stat,
+        "p_value": p_value,
+        "sample_flag": "INSUFFICIENT SAMPLE" if n < 300 else "OK",
+    }
 
 
 def purged_walk_forward(values: np.ndarray, folds: int = 6, embargo: int = 20) -> list[dict[str, float | int]]:
@@ -464,14 +465,21 @@ def purged_walk_forward(values: np.ndarray, folds: int = 6, embargo: int = 20) -
         test = values[test_start:test_end]
         gross_win = float(test[test > 0].sum())
         gross_loss = abs(float(test[test < 0].sum()))
-        results.append({"fold": fold + 1, "train_end": max(0, test_start - embargo),
-                        "test_start": test_start, "test_end": test_end,
-                        "trade_count": int(len(test)), "mean_R": float(test.mean()) if len(test) else 0.0,
-                        "net_pf": gross_win / gross_loss if gross_loss else (float("inf") if gross_win else 0.0)})
+        results.append({
+            "fold": fold + 1,
+            "train_end": max(0, test_start - embargo),
+            "test_start": test_start,
+            "test_end": test_end,
+            "trade_count": int(len(test)),
+            "mean_R": float(test.mean()) if len(test) else 0.0,
+            "net_pf": gross_win / gross_loss if gross_loss else (float("inf") if gross_win else 0.0),
+        })
     return results
 
 
-def permutation_percentile(signal_positions: np.ndarray, outcomes: np.ndarray, iterations: int = 1000, seed: int = 7) -> float:
+def permutation_percentile(
+    signal_positions: np.ndarray, outcomes: np.ndarray, iterations: int = 1000, seed: int = 7
+) -> float:
     """Circularly shift a fixed-count signal series against outcome bars."""
     rng = np.random.default_rng(seed)
     signal = np.asarray(signal_positions, dtype=float)
@@ -497,6 +505,6 @@ def deflated_sharpe_ratio(values: np.ndarray, trials: int) -> float:
 
 def append_trial(path: Path, record: dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    record = {"timestamp_utc": datetime.now(timezone.utc).isoformat(), **record}
+    record = {"timestamp_utc": datetime.now(UTC).isoformat(), **record}
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(record, sort_keys=True, default=str) + "\n")

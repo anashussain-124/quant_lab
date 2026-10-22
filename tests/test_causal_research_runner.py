@@ -7,8 +7,7 @@ import pytest
 from engine.backtester_v2 import CostModel
 from engine.research_runner import ExperimentConfig, ResearchRunner
 from strategies import BaseStrategy, Signal, SignalAction, get_strategy
-from strategies.real_strategies import MomentumBreakout
-from strategies.real_strategies import FundingContrarianDirectional
+from strategies.real_strategies import FundingContrarianDirectional, MomentumBreakout
 
 
 def _bars(n: int = 90) -> pd.DataFrame:
@@ -16,16 +15,14 @@ def _bars(n: int = 90) -> pd.DataFrame:
     if n >= 65:
         close[55:65] = np.linspace(100.0, 120.0, 10)
         close[65:] = 120.0
-    return pd.DataFrame(
-        {
-            "timestamp": pd.date_range("2025-01-01", periods=n, freq="h", tz="UTC"),
-            "open": close,
-            "high": close + 0.5,
-            "low": close - 0.5,
-            "close": close,
-            "symbol": ["XAUUSD"] * n,
-        }
-    )
+    return pd.DataFrame({
+        "timestamp": pd.date_range("2025-01-01", periods=n, freq="h", tz="UTC"),
+        "open": close,
+        "high": close + 0.5,
+        "low": close - 0.5,
+        "close": close,
+        "symbol": ["XAUUSD"] * n,
+    })
 
 
 def test_real_strategy_returns_scalar_symbol_and_is_causal() -> None:

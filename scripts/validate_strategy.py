@@ -1,4 +1,5 @@
 """Run frozen-parameter statistical validation on saved V3 trade logs."""
+
 from __future__ import annotations
 
 import argparse
@@ -11,7 +12,13 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from engine.validation import append_trial, deflated_sharpe_ratio, permutation_percentile, purged_walk_forward, t_test_mean
+from engine.validation import (
+    append_trial,
+    deflated_sharpe_ratio,
+    permutation_percentile,
+    purged_walk_forward,
+    t_test_mean,
+)
 
 
 def main() -> int:
@@ -64,9 +71,32 @@ def main() -> int:
         if dsr < 0.95:
             reasons.append("DSR < 0.95")
         verdict = "PASS-CANDIDATE" if not reasons else ("FAIL" if float(stats["mean"]) <= 0 else "INCONCLUSIVE")
-        row = {"strategy": name, "n": stats["n"], "mean_net_R": stats["mean"], "t_stat": stats["t_stat"], "p_value": stats["p_value"], "permutation_percentile": perm, "walk_forward_pfs": ",".join(f"{float(f['net_pf']):.3f}" for f in folds), "positive_folds": positive_folds, "dsr": dsr, "verdict": verdict, "reasons": "; ".join(reasons), "data_hash": report.get("data_hash"), "code_version": report.get("code_version")}
+        row = {
+            "strategy": name,
+            "n": stats["n"],
+            "mean_net_R": stats["mean"],
+            "t_stat": stats["t_stat"],
+            "p_value": stats["p_value"],
+            "permutation_percentile": perm,
+            "walk_forward_pfs": ",".join(f"{float(f['net_pf']):.3f}" for f in folds),
+            "positive_folds": positive_folds,
+            "dsr": dsr,
+            "verdict": verdict,
+            "reasons": "; ".join(reasons),
+            "data_hash": report.get("data_hash"),
+            "code_version": report.get("code_version"),
+        }
         rows.append(row)
-        append_trial(args.registry, {"strategy": name, "params": report.get("risk"), "data_hash": report.get("data_hash"), "code_hash": report.get("code_version"), "results": row})
+        append_trial(
+            args.registry,
+            {
+                "strategy": name,
+                "params": report.get("risk"),
+                "data_hash": report.get("data_hash"),
+                "code_hash": report.get("code_version"),
+                "results": row,
+            },
+        )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows).to_csv(args.out, index=False)
     print(pd.DataFrame(rows).to_string(index=False))

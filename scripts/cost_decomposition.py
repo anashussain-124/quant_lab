@@ -3,6 +3,7 @@
 This is BACKTEST evidence only. It does not infer missing tick-level costs;
 the report explicitly labels spread/slippage limitations.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -39,7 +40,9 @@ def summarize(trades: pd.DataFrame, bars: pd.DataFrame) -> dict[str, object]:
         "gross_profit_factor": float(gross_wins / gross_losses) if gross_losses else float("inf"),
         "net_profit_factor": float(net_wins / net_losses) if net_losses else float("inf"),
         "average_spread_fraction_of_stop": float(avg_spread_price / avg_stop) if avg_stop else float("nan"),
-        "break_even_win_rate": float(abs(losses.mean()) / (wins.mean() + abs(losses.mean()))) if len(wins) and len(losses) else float("nan"),
+        "break_even_win_rate": float(abs(losses.mean()) / (wins.mean() + abs(losses.mean())))
+        if len(wins) and len(losses)
+        else float("nan"),
     }
 
 
@@ -66,7 +69,8 @@ def main() -> int:
     if rows:
         with out.open("w", newline="", encoding="utf-8") as handle:
             writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
-            writer.writeheader(); writer.writerows(rows)
+            writer.writeheader()
+            writer.writerows(rows)
     fields = list(rows[0]) if rows else ["strategy", "trades"]
     print(" | ".join(fields))
     for row in rows:

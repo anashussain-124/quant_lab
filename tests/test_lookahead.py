@@ -19,6 +19,7 @@ from fundingpips_research_v3 import (  # noqa: E402
     load_csv,
     prepare,
 )
+
 from strategies.real_strategies import MeanReversionZScore, MomentumBreakout  # noqa: E402
 
 
@@ -57,18 +58,44 @@ def test_csv_broker_offsets_are_explicit_across_dst_dates(tmp_path) -> None:
 def test_target_exit_applies_adverse_slippage_and_both_commissions() -> None:
     idx = pd.date_range("2024-03-04 09:00Z", periods=3, freq="5min")
     df = pd.DataFrame(
-        {"open": [2000, 2000, 2010], "high": [2000, 2010, 2010], "low": [2000, 1999, 2010], "close": [2000, 2010, 2010]},
+        {
+            "open": [2000, 2000, 2010],
+            "high": [2000, 2010, 2010],
+            "low": [2000, 1999, 2010],
+            "close": [2000, 2010, 2010],
+        },
         index=idx,
     )
     sig = pd.DataFrame(
-        {"side": [1, 0, 0], "stop_dist": [5.0, np.nan, np.nan], "target": [2005.0, np.nan, np.nan], "exit_long": [False] * 3, "exit_short": [False] * 3},
+        {
+            "side": [1, 0, 0],
+            "stop_dist": [5.0, np.nan, np.nan],
+            "target": [2005.0, np.nan, np.nan],
+            "exit_long": [False] * 3,
+            "exit_short": [False] * 3,
+        },
         index=idx,
     )
     costs = Costs(commission_per_lot_side=2.5, slippage=0.05, fixed_spread_points=100)
-    rules = PropRules(initial_balance=100_000, profit_target_pct=10, max_daily_loss_pct=0.5, max_total_loss_pct=0.9, min_trading_days=1, inactivity_days=0)
-    risk = RiskConfig(risk_per_trade=0.005, soft_daily_stop_pct=0.5, soft_total_drawdown_pct=0.9, entry_start_london=8, entry_end_london=12)
+    rules = PropRules(
+        initial_balance=100_000,
+        profit_target_pct=10,
+        max_daily_loss_pct=0.5,
+        max_total_loss_pct=0.9,
+        min_trading_days=1,
+        inactivity_days=0,
+    )
+    risk = RiskConfig(
+        risk_per_trade=0.005,
+        soft_daily_stop_pct=0.5,
+        soft_total_drawdown_pct=0.9,
+        entry_start_london=8,
+        entry_end_london=12,
+    )
     inst = Instrument(point=0.01, contract_size=100, volume_min=0.01, volume_step=0.01)
-    result = Backtester(inst, costs, rules, risk).run(prepare(df, sig, inst, costs, rules), enforce_prop_rules=False, stop_on_result=False)
+    result = Backtester(inst, costs, rules, risk).run(
+        prepare(df, sig, inst, costs, rules), enforce_prop_rules=False, stop_on_result=False
+    )
     trade = result.trades.iloc[0]
     volume = float(trade.volume)
     expected = ((2005.0 - 0.05) - (2000.0 + 1.0 + 0.05)) * volume * 100 - 2 * 2.5 * volume
@@ -78,25 +105,89 @@ def test_target_exit_applies_adverse_slippage_and_both_commissions() -> None:
 
 def test_same_bar_stop_and_target_is_pessimistically_a_stop() -> None:
     idx = pd.date_range("2024-03-04 09:00Z", periods=3, freq="5min")
-    df = pd.DataFrame({"open": [2000, 2000, 2000], "high": [2000, 2010, 2000], "low": [2000, 1990, 2000], "close": [2000, 2005, 2000]}, index=idx)
-    sig = pd.DataFrame({"side": [1, 0, 0], "stop_dist": [5.0, np.nan, np.nan], "target": [2005.0, np.nan, np.nan], "exit_long": [False] * 3, "exit_short": [False] * 3}, index=idx)
+    df = pd.DataFrame(
+        {
+            "open": [2000, 2000, 2000],
+            "high": [2000, 2010, 2000],
+            "low": [2000, 1990, 2000],
+            "close": [2000, 2005, 2000],
+        },
+        index=idx,
+    )
+    sig = pd.DataFrame(
+        {
+            "side": [1, 0, 0],
+            "stop_dist": [5.0, np.nan, np.nan],
+            "target": [2005.0, np.nan, np.nan],
+            "exit_long": [False] * 3,
+            "exit_short": [False] * 3,
+        },
+        index=idx,
+    )
     costs = Costs(commission_per_lot_side=0, slippage=0, fixed_spread_points=0)
-    rules = PropRules(initial_balance=100_000, profit_target_pct=10, max_daily_loss_pct=0.5, max_total_loss_pct=0.9, min_trading_days=1, inactivity_days=0)
-    risk = RiskConfig(risk_per_trade=0.005, soft_daily_stop_pct=0.5, soft_total_drawdown_pct=0.9, entry_start_london=8, entry_end_london=12)
+    rules = PropRules(
+        initial_balance=100_000,
+        profit_target_pct=10,
+        max_daily_loss_pct=0.5,
+        max_total_loss_pct=0.9,
+        min_trading_days=1,
+        inactivity_days=0,
+    )
+    risk = RiskConfig(
+        risk_per_trade=0.005,
+        soft_daily_stop_pct=0.5,
+        soft_total_drawdown_pct=0.9,
+        entry_start_london=8,
+        entry_end_london=12,
+    )
     inst = Instrument(point=0.01, contract_size=100)
-    result = Backtester(inst, costs, rules, risk).run(prepare(df, sig, inst, costs, rules), enforce_prop_rules=False, stop_on_result=False)
+    result = Backtester(inst, costs, rules, risk).run(
+        prepare(df, sig, inst, costs, rules), enforce_prop_rules=False, stop_on_result=False
+    )
     assert result.trades.iloc[0].reason == "SL"
 
 
 def test_final_open_position_is_closed_with_exit_costs() -> None:
     idx = pd.date_range("2024-03-04 09:00Z", periods=3, freq="5min")
-    df = pd.DataFrame({"open": [2000, 2000, 2010], "high": [2000, 2000, 2010], "low": [2000, 2000, 2010], "close": [2000, 2000, 2010]}, index=idx)
-    sig = pd.DataFrame({"side": [1, 0, 0], "stop_dist": [5.0, np.nan, np.nan], "target": [np.nan, np.nan, np.nan], "exit_long": [False] * 3, "exit_short": [False] * 3}, index=idx)
+    df = pd.DataFrame(
+        {
+            "open": [2000, 2000, 2010],
+            "high": [2000, 2000, 2010],
+            "low": [2000, 2000, 2010],
+            "close": [2000, 2000, 2010],
+        },
+        index=idx,
+    )
+    sig = pd.DataFrame(
+        {
+            "side": [1, 0, 0],
+            "stop_dist": [5.0, np.nan, np.nan],
+            "target": [np.nan, np.nan, np.nan],
+            "exit_long": [False] * 3,
+            "exit_short": [False] * 3,
+        },
+        index=idx,
+    )
     costs = Costs(commission_per_lot_side=2.5, slippage=0.05, fixed_spread_points=100)
-    rules = PropRules(initial_balance=100_000, profit_target_pct=10, max_daily_loss_pct=0.5, max_total_loss_pct=0.9, min_trading_days=1, inactivity_days=0)
-    risk = RiskConfig(risk_per_trade=0.005, soft_daily_stop_pct=0.5, soft_total_drawdown_pct=0.9, entry_start_london=8, entry_end_london=12)
+    rules = PropRules(
+        initial_balance=100_000,
+        profit_target_pct=10,
+        max_daily_loss_pct=0.5,
+        max_total_loss_pct=0.9,
+        min_trading_days=1,
+        inactivity_days=0,
+    )
+    risk = RiskConfig(
+        risk_per_trade=0.005,
+        soft_daily_stop_pct=0.5,
+        soft_total_drawdown_pct=0.9,
+        entry_start_london=8,
+        entry_end_london=12,
+    )
     inst = Instrument(point=0.01, contract_size=100)
-    result = Backtester(inst, costs, rules, risk).run(prepare(df, sig, inst, costs, rules), enforce_prop_rules=False, stop_on_result=False)
+    result = Backtester(inst, costs, rules, risk).run(
+        prepare(df, sig, inst, costs, rules), enforce_prop_rules=False, stop_on_result=False
+    )
     trade = result.trades.iloc[0]
     volume = float(trade.volume)
     expected = ((2010.0 - 0.05) - (2000.0 + 1.0 + 0.05)) * volume * 100 - 2 * 2.5 * volume
