@@ -6,7 +6,7 @@ import pytest
 
 from engine.backtester_v2 import CostModel
 from engine.research_runner import ExperimentConfig, ResearchRunner
-from strategies import BaseStrategy, Signal, SignalAction
+from strategies import BaseStrategy, Signal, SignalAction, get_strategy
 from strategies.real_strategies import MomentumBreakout
 from strategies.real_strategies import FundingContrarianDirectional
 
@@ -128,3 +128,30 @@ def test_causal_runner_uses_strategy_warmup_and_max_hold() -> None:
         data, _AlwaysLong(), CostModel(taker_fee=0.0, expected_slippage_bps=0.0)
     )
     assert len(returns) >= 3
+
+
+def test_placeholder_strategies_are_marked_and_not_runnable_by_default() -> None:
+    strategy = get_strategy("momentum_breakout")
+    assert strategy is not None
+    assert strategy.status == "placeholder"
+
+
+def test_research_runner_refuses_placeholder_strategy() -> None:
+    data = _bars(300)
+    runner = ResearchRunner(data)
+    config = ExperimentConfig(
+        experiment_id="placeholder",
+        hypothesis="placeholder must not run",
+        strategy_name="momentum_breakout",
+        symbol="XAUUSD",
+        timeframe="H1",
+        train_start="2025-01-01T00:00:00+00:00",
+        train_end="2025-01-08T12:00:00+00:00",
+        val_start="2025-01-08T12:00:00+00:00",
+        val_end="2025-01-11T00:00:00+00:00",
+        test_start="2025-01-11T00:00:00+00:00",
+        test_end="2025-01-13T12:00:00+00:00",
+    )
+    result = runner.run_experiment(config)
+    assert result.verdict == "REJECT"
+    assert "Placeholder strategy refused" in result.reasons[0]

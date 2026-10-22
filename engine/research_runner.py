@@ -52,6 +52,7 @@ class ExperimentConfig:
     })
     parameters: dict[str, Any] = field(default_factory=dict)
     execution_mode: str = "legacy_same_close"
+    allow_placeholder: bool = False
 
 
 @dataclass
@@ -323,6 +324,12 @@ class ResearchRunner:
             if strategy is None:
                 result.verdict = "REJECT"
                 result.reasons.append(f"Strategy not found: {config.strategy_name}")
+                return result
+            if getattr(strategy, "status", "research") == "placeholder" and not config.allow_placeholder:
+                result.verdict = "REJECT"
+                result.reasons.append(
+                    f"Placeholder strategy refused: {config.strategy_name}; set allow_placeholder=True explicitly"
+                )
                 return result
 
             # Run backtest on each split

@@ -46,6 +46,7 @@ class StrategyResult:
 
 
 class BaseStrategy(ABC):
+    status: str = "research"
     min_history: int = 50
     max_hold: int = 20
     stop_distance: float | None = None
@@ -113,6 +114,8 @@ class BaseStrategy(ABC):
 class MomentumBreakout(BaseStrategy):
     """Placeholder momentum strategy."""
 
+    status = "placeholder"
+
     def generate_signal(self, data: pd.DataFrame) -> Signal:
         return Signal(
             action=SignalAction.NO_TRADE,
@@ -136,6 +139,8 @@ class MomentumBreakout(BaseStrategy):
 class MeanReversionVWAP(BaseStrategy):
     """Placeholder VWAP mean reversion."""
 
+    status = "placeholder"
+
     def generate_signal(self, data: pd.DataFrame) -> Signal:
         return Signal(action=SignalAction.NO_TRADE, symbol="UNKNOWN", explanation="Placeholder")
 
@@ -155,6 +160,8 @@ class MeanReversionVWAP(BaseStrategy):
 class StatArb(BaseStrategy):
     """Placeholder stat arb."""
 
+    status = "placeholder"
+
     def generate_signal(self, data: pd.DataFrame) -> Signal:
         return Signal(action=SignalAction.NO_TRADE, symbol="UNKNOWN", explanation="Placeholder")
 
@@ -173,6 +180,8 @@ class StatArb(BaseStrategy):
 
 class FundingCarry(BaseStrategy):
     """Placeholder funding carry."""
+
+    status = "placeholder"
 
     def generate_signal(self, data: pd.DataFrame) -> Signal:
         return Signal(action=SignalAction.NO_TRADE, symbol="UNKNOWN", explanation="Placeholder")
