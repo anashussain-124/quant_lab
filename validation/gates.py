@@ -17,6 +17,10 @@ class GateResult:
     funnel: tuple[tuple[str, bool], ...]
     permutation_percentile: float
     t_stat: float
+    gross_permutation_percentile: float = 0.0
+    net_permutation_percentile: float = 0.0
+    null_mean_net: float = float("nan")
+    null_p95_net: float = float("nan")
 
 
 def evaluate_candidate(
@@ -25,6 +29,10 @@ def evaluate_candidate(
     *,
     registry_trials: int,
     permutation_percentile: float | None = None,
+    gross_permutation_percentile: float | None = None,
+    net_permutation_percentile: float | None = None,
+    null_mean_net: float | None = None,
+    null_p95_net: float | None = None,
     neighborhood: list[float] | None = None,
     stressed_trades: list[float] | np.ndarray | None = None,
     regimes: dict[str, list[float]] | None = None,
@@ -47,11 +55,18 @@ def evaluate_candidate(
     funnel.append(("registry-adjusted t-stat", t_ok))
     if not t_ok:
         reasons.append(f"t-stat={stat.t_stat:.3f} does not exceed adjusted threshold {adjusted_threshold:.3f}")
-    perm = 0.0 if permutation_percentile is None else float(permutation_percentile)
-    perm_ok = perm >= 95.0
+    gross_perm = 0.0 if gross_permutation_percentile is None else float(gross_permutation_percentile)
+    net_perm = (float(permutation_percentile) if net_permutation_percentile is None and permutation_percentile is not None
+                else 0.0 if net_permutation_percentile is None else float(net_permutation_percentile))
+    # A negative-net candidate can never pass this gate, even if a flawed
+    # gross-only statistic happens to be above the percentile threshold.
+    perm_ok = positive and net_perm >= 95.0
+    if null_p95_net is not None and positive and mean <= float(null_p95_net):
+        perm_ok = False
+        reasons.append(f"net expectancy={mean:.6f} does not exceed random-signal null p95={float(null_p95_net):.6f}")
     funnel.append(("permutation >= 95", perm_ok))
-    if not perm_ok:
-        reasons.append(f"permutation percentile={perm:.3f} is below 95")
+    if not perm_ok and not any("null p95" in reason for reason in reasons):
+        reasons.append(f"net permutation percentile={net_perm:.3f} is below 95 or net expectancy is non-positive")
     positive_folds = sum(float(f.get("mean_r", 0.0)) > 0 for f in folds)
     total_profit = sum(float(f.get("profit", f.get("mean_r", 0.0) * f.get("trade_count", 0))) for f in folds)
     max_share = max((float(f.get("profit", f.get("mean_r", 0.0) * f.get("trade_count", 0))) / total_profit
@@ -80,4 +95,7 @@ def evaluate_candidate(
     funnel.append(("regimes", regime_ok))
     all_pass = all(ok for _, ok in funnel)
     verdict = "PASS-CANDIDATE" if all_pass else ("FAIL" if not positive or not n_ok else "INCONCLUSIVE")
-    return GateResult(verdict, tuple(reasons), tuple(funnel), perm, float(stat.t_stat))
+    return GateResult(verdict, tuple(reasons), tuple(funnel), net_perm, float(stat.t_stat),
+                       gross_perm, net_perm,
+                       float("nan") if null_mean_net is None else float(null_mean_net),
+                       float("nan") if null_p95_net is None else float(null_p95_net))

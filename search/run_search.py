@@ -15,7 +15,7 @@ from execution.fast_sim import simulate_next_open_fast
 from hypotheses.generators import GENERATORS, SignalPlan
 from hypotheses.registry import hypothesis_registry
 from search.registry import ExperimentRegistry, code_hash
-from validation.core import shifted_signal_percentile
+from validation.core import permutation_report
 from validation.gates import GateResult, evaluate_candidate
 from validation.walkforward import deflated_sharpe, purged_walk_forward
 
@@ -86,13 +86,13 @@ def run_search(frame: pd.DataFrame, *, trials: int = 200, seed: int = 7,
         plan = GENERATORS[spec.name](frame, params)
         trades = _trades(frame, plan)
         values = _r_values(trades, plan.stop_distance)
+        gross_values = np.asarray([float(t.gross_pnl) / plan.stop_distance for t in trades], dtype=float)
         folds_raw = purged_walk_forward(values, params, folds=6, embargo=spec.max_hold if len(values) >= 6 else 0)
         folds = [{"mean_r": f.mean_r, "trade_count": f.trade_count,
                   "profit": f.mean_r * f.trade_count,
                   "profit_factor": f.profit_factor} for f in folds_raw]
-        perm = 0.0
-        if len(values):
-            perm = shifted_signal_percentile(np.sign(values), np.abs(values), iterations=1000, seed=seed + trial)
+        perm = permutation_report(np.sign(values), gross_values, values,
+                                  iterations=1000, seed=seed + trial) if len(values) else None
         neighbors: list[float] = []
         for key in params:
             for factor in (0.9, 1.1):
@@ -118,7 +118,11 @@ def run_search(frame: pd.DataFrame, *, trials: int = 200, seed: int = 7,
                 if year_values:
                     regimes[f"year_{year}"] = year_values
         gate = evaluate_candidate(values, folds, registry_trials=max(1, registry.trial_count()),
-                                  permutation_percentile=perm, neighborhood=neighbors,
+                                  gross_permutation_percentile=perm.gross_percentile if perm else None,
+                                  net_permutation_percentile=perm.net_percentile if perm else None,
+                                  null_mean_net=perm.null_mean_net if perm else None,
+                                  null_p95_net=perm.null_p95_net if perm else None,
+                                  neighborhood=neighbors,
                                   stressed_trades=stressed, regimes=regimes)
         result = TrialOutcome(trial, spec.name, params, len(values), float(values.mean()) if len(values) else float("nan"),
                               gate, tuple(f["profit_factor"] for f in folds),

@@ -27,3 +27,20 @@ def test_small_sample_is_not_pass_candidate():
     result = evaluate_candidate(np.ones(20), **_kwargs())
     assert result.verdict in {"FAIL", "INCONCLUSIVE"}
     assert any("below 300" in reason for reason in result.reasons)
+
+
+def test_negative_net_cannot_pass_on_gross_permutation():
+    result = evaluate_candidate(-np.ones(300), **_kwargs(),
+                                gross_permutation_percentile=99,
+                                net_permutation_percentile=99)
+    assert result.verdict == "FAIL"
+    assert result.gross_permutation_percentile == 99
+    assert result.net_permutation_percentile == 99
+
+
+def test_positive_candidate_must_beat_null_baseline():
+    result = evaluate_candidate(np.ones(300), **_kwargs(),
+                                net_permutation_percentile=99,
+                                null_mean_net=0.0, null_p95_net=1.1)
+    assert result.verdict != "PASS-CANDIDATE"
+    assert any("null p95" in reason for reason in result.reasons)
