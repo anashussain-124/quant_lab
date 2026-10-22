@@ -77,3 +77,16 @@ platform time (UTC+3). The 3% add-on removes the minimum-day requirement.
 These values were checked against the [official 2 Step Standard account-model
 page](https://help.fundingpips.com/hc/en-us/articles/34501809112081-2-Step-Standard)
 on 2026-10-21, but the purchased account/dashboard remains the authority.
+
+## v4 framework status (2026-10-22)
+
+The `redesign/v4` branch adds typed fail-closed configuration, public-source
+collection with checksums and manifests, UTC-aware causal feature primitives,
+an append-only experiment registry, next-open execution tests, Decimal cost
+accounting, explicit risk profiles, Monte Carlo utilities, and a stoppable
+seven-day checkpoint runner. These additions are framework code and tests;
+they do not constitute a new market-data result or a strategy promotion.
+
+The v4 data collector has not been used to claim an XAUUSD M5 refresh in this
+run. If the verified MT5 demo session or saved M5 input is unavailable, the
+M5-dependent report must stop rather than substitute H1/H4 data.

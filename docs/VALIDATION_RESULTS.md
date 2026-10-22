@@ -42,3 +42,16 @@ protocol.
 - DSR is a conservative approximation, not a full dependence-adjusted implementation in every case.
 - Monte Carlo paths are simulations, not live or demo fills.
 - No strategy is promoted to `ACTIVE`.
+
+## v4 implementation status
+
+The v4 branch is a tested framework increment, not a new performance claim.
+Its causal simulator fills signals at the next bar open, charges spread,
+slippage, and commission at both entry and exit, uses stop-first handling when
+both barriers are touched, and closes an open position on the final bar. Its
+features and validation helpers are covered by prefix-stability, seeded
+reproducibility, and fail-closed configuration tests.
+
+No new XAUUSD M5 data was fetched or invented for this increment. The existing
+strategy metrics above remain the only reported strategy results until a
+verified M5 input is saved with provenance and audited.
