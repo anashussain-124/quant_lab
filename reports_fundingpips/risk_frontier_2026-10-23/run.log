@@ -1,0 +1,69 @@
+risk frontier: 50 configs x 5 risks x 2 scenarios x 2 costs x 92 starts = 92000 attempts
+[1/50] ar01 (1840 attempts, 181s)
+[2/50] ar02 (1840 attempts, 238s)
+[3/50] ar03 (1840 attempts, 238s)
+[4/50] ar04 (1840 attempts, 250s)
+[5/50] ar05 (1840 attempts, 255s)
+[6/50] ar06 (1840 attempts, 352s)
+[7/50] ar07 (1840 attempts, 352s)
+[8/50] ar08 (1840 attempts, 356s)
+[9/50] ar09 (1840 attempts, 356s)
+[10/50] ar10 (1840 attempts, 356s)
+[11/50] dc01 (1840 attempts, 356s)
+[12/50] dc02 (1840 attempts, 481s)
+[13/50] dc03 (1840 attempts, 481s)
+[14/50] dc04 (1840 attempts, 535s)
+[15/50] dc05 (1840 attempts, 535s)
+[16/50] dc06 (1840 attempts, 535s)
+[17/50] dc07 (1840 attempts, 535s)
+[18/50] dc08 (1840 attempts, 684s)
+[19/50] dc09 (1840 attempts, 684s)
+[20/50] dc10 (1840 attempts, 684s)
+[21/50] em01 (1840 attempts, 687s)
+[22/50] em02 (1840 attempts, 687s)
+[23/50] em03 (1840 attempts, 687s)
+[24/50] em04 (1840 attempts, 687s)
+[25/50] em05 (1840 attempts, 687s)
+[26/50] em06 (1840 attempts, 876s)
+[27/50] em07 (1840 attempts, 876s)
+[28/50] em08 (1840 attempts, 876s)
+[29/50] em09 (1840 attempts, 876s)
+[30/50] em10 (1840 attempts, 876s)
+[31/50] mr01 (1840 attempts, 876s)
+[32/50] mr02 (1840 attempts, 876s)
+[33/50] mr03 (1840 attempts, 876s)
+[34/50] mr04 (1840 attempts, 876s)
+[35/50] mr05 (1840 attempts, 876s)
+[36/50] mr06 (1840 attempts, 876s)
+[37/50] mr07 (1840 attempts, 876s)
+[38/50] mr08 (1840 attempts, 876s)
+[39/50] mr09 (1840 attempts, 876s)
+[40/50] mr10 (1840 attempts, 876s)
+[41/50] sq01 (1840 attempts, 876s)
+[42/50] sq02 (1840 attempts, 876s)
+[43/50] sq03 (1840 attempts, 876s)
+[44/50] sq04 (1840 attempts, 876s)
+[45/50] sq05 (1840 attempts, 876s)
+[46/50] sq06 (1840 attempts, 876s)
+[47/50] sq07 (1840 attempts, 876s)
+[48/50] sq08 (1840 attempts, 886s)
+[49/50] sq09 (1840 attempts, 886s)
+[50/50] sq10 (1840 attempts, 941s)
+
+| 0.75% | primary | fp10_base | 4,600 | 66 | 1.43% | 0 | 0.00% | 270 | 8.20% |
+| 0.75% | primary | fp10_stress1.5 | 4,600 | 30 | 0.65% | 0 | 0.00% | 291 | 8.15% |
+| 1.00% | firm_rules_only | fp10_base | 4,600 | 774 | 16.83% | 380 | 8.26% | 225 | 17.20% |
+| 1.00% | firm_rules_only | fp10_stress1.5 | 4,600 | 658 | 14.30% | 580 | 12.61% | 234 | 17.39% |
+| 1.00% | primary | fp10_base | 4,600 | 0 | 0.00% | 0 | 0.00% | nan | 5.27% |
+| 1.00% | primary | fp10_stress1.5 | 4,600 | 0 | 0.00% | 0 | 0.00% | nan | 5.04% |
+| 1.50% | firm_rules_only | fp10_base | 4,600 | 978 | 21.26% | 644 | 14.00% | 133 | 18.26% |
+| 1.50% | firm_rules_only | fp10_stress1.5 | 4,600 | 821 | 17.85% | 888 | 19.30% | 126 | 18.33% |
+| 1.50% | primary | fp10_base | 4,600 | 0 | 0.00% | 0 | 0.00% | nan | 3.89% |
+| 1.50% | primary | fp10_stress1.5 | 4,600 | 0 | 0.00% | 0 | 0.00% | nan | 3.89% |
+| 2.00% | firm_rules_only | fp10_base | 4,600 | 894 | 19.43% | 897 | 19.50% | 80 | 19.08% |
+| 2.00% | firm_rules_only | fp10_stress1.5 | 4,600 | 789 | 17.15% | 1,182 | 25.70% | 80 | 19.07% |
+| 2.00% | primary | fp10_base | 4,600 | 0 | 0.00% | 0 | 0.00% | nan | 4.76% |
+| 2.00% | primary | fp10_stress1.5 | 4,600 | 0 | 0.00% | 0 | 0.00% | nan | 4.77% |
+
+A simulated pass is not a FundingPips pass. No order was sent.
+
