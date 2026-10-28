@@ -38,6 +38,7 @@ reports_fundingpips/**/attempts.csv
 !reports_fundingpips/final_status.json
 !reports_fundingpips/challenge_2026-10-22/challenge_report.json
 !reports_fundingpips/mt5_demo/check_2026-10-22T18-43Z.json
+!configs/obsidian_sync.json
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/

@@ -92,6 +92,8 @@ def all_specs() -> tuple[StrategySpec, ...]:
 def build_plan_v6(frame: pd.DataFrame, spec: StrategySpec) -> Plan:
     if spec.family != FAMILY:
         raise ValueError(f"not a v6 specification: {spec.family}")
+    if not isinstance(frame.index, pd.DatetimeIndex):
+        raise ValueError("build_plan_v6 requires a UTC-aware DatetimeIndex")
     if frame.index.tz is None or str(frame.index.tz) != "UTC":
         raise ValueError("build_plan_v6 requires a UTC-aware DatetimeIndex")
     n = len(frame)
@@ -129,7 +131,8 @@ def build_plan_v6(frame: pd.DataFrame, spec: StrategySpec) -> Plan:
         active = rank >= float(vol_filter)
         long_signal = long_signal & active
         short_signal = short_signal & active
-        warmup = max(warmup, VOL_LOOKBACK + 2)
+        first_valid_rank = ATR_PERIOD - 1 + VOL_LOOKBACK
+        warmup = max(warmup, first_valid_rank)
 
     zeros = np.zeros(n, dtype=bool)
     return Plan(
