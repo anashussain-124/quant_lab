@@ -2,11 +2,11 @@
 
 ## One-time setup
 
-The verified vault path is configured in `configs/obsidian_sync.json` as
-`C:\Users\<USER>\Documents\Obsidian Vault`. If the vault is moved, update
-`vault_path`. Result, registry, and data paths are resolved relative to the
-project root unless configured as absolute paths. No Obsidian API, account,
-cloud service, or network access is used.
+Set `vault_path` in `configs/obsidian_sync.json` to the existing local Obsidian
+vault directory before running `sync`. The checked-in value is intentionally
+empty so machine-specific paths are not shared. Result, registry, and data
+paths are resolved relative to the project root unless configured as absolute
+paths. No Obsidian API, account, cloud service, or network access is used.
 
 From PowerShell in the project root:
 
