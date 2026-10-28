@@ -46,12 +46,12 @@ def _config_file(tmp_path: Path, *, result_paths: list[str] | None = None) -> Pa
     return config_path
 
 
-def test_config_resolves_windows_absolute_vault_path() -> None:
+def test_checked_in_config_requires_local_vault_path() -> None:
     config_path = Path(__file__).resolve().parents[1] / "configs" / "obsidian_sync.json"
-    config = load_config(config_path)
-    assert config.vault_path.is_absolute()
-    assert config.vault_path.is_dir()
-    assert config.generated_root.is_relative_to(config.vault_path)
+    raw_config = json.loads(config_path.read_text(encoding="utf-8"))
+    assert raw_config["vault_path"] == ""
+    with pytest.raises(ValueError, match="Set vault_path"):
+        load_config(config_path)
 
 
 def test_config_rejects_generated_path_escape(tmp_path: Path) -> None:
